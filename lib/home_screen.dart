@@ -98,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================================
-  // HÀM MỚI: Rút gọn từ loại (Noun -> n, Verb -> v)
+  // Rút gọn từ loại (Noun -> n, Verb -> v)
   // ==========================================
   String _getShortType(String? type) {
     if (type == null || type.isEmpty) return "";
