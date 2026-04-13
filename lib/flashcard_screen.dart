@@ -245,10 +245,6 @@ class _FlashcardScreenState extends State<FlashcardScreen> with SingleTickerProv
               },
             ),
           ),
-
-          const Center(
-            child: Text('Chạm để quay lại mặt trước', style: TextStyle(color: Colors.grey, fontSize: 14)),
-          ),
         ],
       ),
     );
