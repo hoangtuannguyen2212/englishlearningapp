@@ -75,7 +75,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> with SingleTickerProv
           icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF1A56F6)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Flashcard', style: TextStyle(color: Color(0xFF2E384D), fontWeight: FontWeight.bold)),
+
         centerTitle: true,
       ),
       //Bọc toàn bộ Body bằng Container chứa hình nền
