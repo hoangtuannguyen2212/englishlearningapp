@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'flashcard_screen.dart'; // Đã import trang Flashcard
+import 'flashcard_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
             .collection('vocabularies')
             .get(const GetOptions(source: Source.cache));
 
-        // 2. Nếu Cache trống (Ví dụ: Lần đầu tiên người dùng tải app) -> Mới gọi lên Server
+        // 2. Nếu Cache trống -> Mới gọi lên Server
         if (snapshot.docs.isEmpty) {
           print("Chưa có Cache, đang tải 5000 từ từ Server (Chỉ tải 1 lần duy nhất)...");
           snapshot = await FirebaseFirestore.instance
@@ -65,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return data;
       }).toList();
 
-      // (Tùy chọn) Sắp xếp danh sách theo thứ tự A-Z cho đẹp mắt
+      // Sắp xếp danh sách theo thứ tự A-Z cho đẹp mắt
       loadedWords.sort((a, b) => (a['word'] ?? '').toString().compareTo((b['word'] ?? '').toString()));
 
       setState(() {
@@ -97,9 +97,26 @@ class _HomeScreenState extends State<HomeScreen> {
     return "GU";
   }
 
+  // ==========================================
+  // HÀM MỚI: Rút gọn từ loại (Noun -> n, Verb -> v)
+  // ==========================================
+  String _getShortType(String? type) {
+    if (type == null || type.isEmpty) return "";
+    switch (type.toLowerCase()) {
+      case 'noun': return ' (n)';
+      case 'verb': return ' (v)';
+      case 'adjective': return ' (adj)';
+      case 'adverb': return ' (adv)';
+      case 'pronoun': return ' (pro)';
+      case 'preposition': return ' (prep)';
+      case 'conjunction': return ' (conj)';
+      default: return ' ($type)';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Lọc dựa trên trường 'word' trong cục dữ liệu
+    // Lọc dựa trên trường 'word'
     List<Map<String, dynamic>> filteredWords = _vocabularyDatabase
         .where((item) => (item['word'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase()))
         .toList();
@@ -174,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         onChanged: (value) => setState(() => _searchQuery = value),
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
                         decoration: InputDecoration(
-                          hintText: 'Searching vocabulary',
+                          hintText: 'Search',
                           hintStyle: const TextStyle(color: Color(0xFFA8B1C3)),
                           prefixIcon: const Icon(Icons.search, color: Color(0xFF1A56F6), size: 26),
                           suffixIcon: _searchQuery.isNotEmpty
@@ -236,21 +253,45 @@ class _HomeScreenState extends State<HomeScreen> {
                           itemCount: filteredWords.length,
                           separatorBuilder: (context, index) => Divider(color: Colors.grey.withValues(alpha: 0.2), thickness: 1, height: 1),
                           itemBuilder: (context, index) {
+
+                            // --- ĐÃ SỬA: Lấy thông tin từ vựng và từ loại ---
+                            final wordData = filteredWords[index];
+                            String word = wordData['word'] ?? '';
+                            String type = wordData['type'] ?? '';
+                            String shortType = _getShortType(type); // Gọi hàm rút gọn
+
                             return ListTile(
-                              title: Text(
-                                filteredWords[index]['word'] ?? '',
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2E384D)),
+                              // --- ĐÃ SỬA: Dùng RichText thay cho Text thường ---
+                              title: RichText(
+                                text: TextSpan(
+                                  style: const TextStyle(fontSize: 18),
+                                  children: [
+                                    TextSpan(
+                                      text: word,
+                                      style: const TextStyle(
+                                        color: Color(0xFF2E384D),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: shortType,
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontStyle: FontStyle.italic,
+                                        fontSize: 15, // Cỡ chữ của (n), (v) nhỏ hơn 1 chút
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
                               onTap: () {
                                 FocusScope.of(context).unfocus(); // Cất bàn phím
-
-                                // ĐÃ SỬA: Chuyển hướng sang màn hình Flashcard
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => FlashcardScreen(
-                                      wordData: filteredWords[index],
+                                      wordData: wordData,
                                     ),
                                   ),
                                 );
