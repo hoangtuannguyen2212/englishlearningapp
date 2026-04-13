@@ -87,7 +87,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> with SingleTickerProv
             fit: BoxFit.cover, // Căn chỉnh ảnh phủ kín toàn bộ màn hình
           ),
         ),
-        // SafeArea giúp thẻ flashcard không bị lẹm vào phần "tai thỏ" hoặc viền dưới điện thoại
+
         child: SafeArea(
           child: Center(
             child: Padding(
