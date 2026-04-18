@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
+import 'profiles_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -17,7 +18,7 @@ class _MainScreenState extends State<MainScreen> {
     const HomeScreen(),
     const Center(child: Text('Khóa học (Courses) - Đang xây dựng', style: TextStyle(fontSize: 18))),
     const Center(child: Text('AI Chatbot - Đang xây dựng', style: TextStyle(fontSize: 18))),
-    const Center(child: Text('Cá nhân (Me) - Đang xây dựng', style: TextStyle(fontSize: 18))),
+    const ProfileScreen(),
   ];
 
   // Hàm xử lý khi người dùng bấm vào các tab ở dưới
