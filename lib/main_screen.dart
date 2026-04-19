@@ -72,7 +72,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ],
           currentIndex: _selectedIndex,
-          selectedItemColor: const Color(0xFFFF9800), // Màu cam nổi bật cho tab đang chọn
+          selectedItemColor: const Color(0xFF2B3FD4),
           unselectedItemColor: const Color(0xFF6B7280), // Màu xám cho tab chưa chọn
           onTap: _onItemTapped,
           type: BottomNavigationBarType.fixed, // Đảm bảo luôn hiện chữ

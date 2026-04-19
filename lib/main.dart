@@ -47,7 +47,7 @@ class MyApp extends StatelessWidget {
             );
           }
 
-          // Trạng thái 2: ĐÃ ĐĂNG NHẬP (Có dữ liệu User) -> Bay thẳng vào Màn hình chính
+          // Trạng thái 2: ĐÃ ĐĂNG NHẬP (Có dữ liệu User) -> vào Màn hình chính
           if (snapshot.hasData) {
             return const MainScreen();
           }

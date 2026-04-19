@@ -1,14 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
+  //Tự động lấy chữ cái đầu của Tên hoặc Email làm Avatar
+  String _getInitials(String? displayName, String? email) {
+    if (displayName != null && displayName.trim().isNotEmpty) {
+      List<String> names = displayName.trim().split(" ");
+      if (names.length >= 2) {
+        return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+      }
+      return names[0][0].toUpperCase();
+    }
+    if (email != null && email.isNotEmpty) {
+      return email[0].toUpperCase();
+    }
+    return "?";
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Vẫn giữ Scaffold để có thể dùng nền hoặc các thuộc tính cơ bản
-    // nhưng ĐÃ BỎ bottomNavigationBar
+    // Lấy thông tin user đang đăng nhập từ Firebase
+    final User? user = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
-      backgroundColor: Colors.white, // Đặt nền trắng mặc định
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           // Lớp 1: Background Gradient
@@ -27,8 +44,8 @@ class ProfileScreen extends StatelessWidget {
                     child: Column(
                       children: [
                         const SizedBox(height: 20),
-                        // Thông tin User (Avatar, Tên, Email)
-                        _buildProfileHeader(),
+                        // Truyền context và user vào Profile Header
+                        _buildProfileHeader(context, user),
 
                         const SizedBox(height: 40),
 
@@ -73,7 +90,12 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileHeader() {
+  Widget _buildProfileHeader(BuildContext context, User? user) {
+    // Xử lý dữ liệu fallback nếu người dùng chưa cập nhật tên/email
+    final String displayName = user?.displayName ?? "Người dùng";
+    final String email = user?.email ?? "Chưa cập nhật email";
+    final String initials = _getInitials(user?.displayName, user?.email);
+
     return Row(
       children: [
         // Avatar
@@ -85,11 +107,11 @@ class ProfileScreen extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           alignment: Alignment.center,
-          child: const Text(
-            'Ma',
-            style: TextStyle(
+          child: Text(
+            initials,
+            style: const TextStyle(
               color: Colors.white,
-              fontSize: 24,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -100,30 +122,72 @@ class ProfileScreen extends StatelessWidget {
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
+            children: [
               Text(
-                'Mason',
-                style: TextStyle(
+                displayName,
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text(
-                'mason@gmail.com',
-                style: TextStyle(
-                  fontSize: 14,
+                email,
+                style: const TextStyle(
+                  fontSize: 20,
                   color: Colors.black54,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
         ),
 
-        const Icon(
-          Icons.keyboard_arrow_down,
-          color: Colors.black54,
+        // Nút mũi tên có PopupMenu Đăng xuất
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
+          offset: const Offset(0, 40),
+
+          color: Colors.white,
+          elevation: 4,
+
+          // Đẩy menu xuống để không che mất mũi tên
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          onSelected: (value) async {
+            if (value == 'logout') {
+              // 1. Gọi lệnh đăng xuất của Firebase
+              await FirebaseAuth.instance.signOut();
+
+              // 2. Chuyển hướng về trang Login
+              if (context.mounted) {
+                Navigator.of(context).pushReplacementNamed('/login');
+              }
+            }
+          },
+          itemBuilder: (BuildContext context) => [
+            PopupMenuItem<String>(
+              value: 'logout',
+              child: Row(
+                children: const [
+                  Icon(Icons.logout, color: Colors.blueGrey, size: 20),
+                  SizedBox(width: 10),
+                  Text(
+                    'Log Out',
+                    style: TextStyle(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.w500
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );

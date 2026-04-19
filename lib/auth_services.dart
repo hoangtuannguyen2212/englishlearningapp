@@ -14,15 +14,19 @@ class AuthService {
     required String username
   }) async {
     try {
-      //  Tạo tài khoản trên Firebase Auth
+      // 1. Tạo tài khoản trên Firebase Auth
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+      // Cập nhật tên hiển thị (displayName) cho Firebase Auth ngay sau khi tạo
+      await userCredential.user!.updateDisplayName(username);
+
+      await userCredential.user!.reload();
 
       String uid = userCredential.user!.uid;
 
-      //  Tạo hồ sơ lưu trữ thông tin trên Firestore
+      // 2. Tạo hồ sơ lưu trữ thông tin chi tiết trên Firestore
       await _firestore.collection('users').doc(uid).set({
         'uid': uid,
         'username': username,
