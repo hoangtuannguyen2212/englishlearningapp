@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'editProfile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -53,7 +54,12 @@ class ProfileScreen extends StatelessWidget {
                         _buildMenuTile(
                           icon: Icons.person_outline,
                           title: 'Edit Profile',
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                            );
+                          },
                         ),
                         _buildMenuTile(
                           icon: Icons.settings_outlined,

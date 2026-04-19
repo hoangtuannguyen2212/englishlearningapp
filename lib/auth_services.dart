@@ -103,7 +103,7 @@ class AuthService {
   }
 
   // ==========================================
-  // 5. HÀM ĐỔI MẬT KHẨU TRỰC TIẾP (Dành cho sau này khi user đã vào trong app)
+  // 5. HÀM ĐỔI MẬT KHẨU TRỰC TIẾP (Không xác thực lại)
   // ==========================================
   Future<String> changePassword({required String newPassword}) async {
     try {
@@ -120,6 +120,65 @@ class AuthService {
         return "Bảo mật: Bạn cần đăng xuất và đăng nhập lại trước khi đổi mật khẩu.";
       }
       return "Lỗi: ${e.message}";
+    }
+  }
+
+  // ==========================================
+  // 6. ĐỔI TÊN NGƯỜI DÙNG (Cập nhật cả 2 kho)
+  // ==========================================
+  Future<String> updateUsername({required String newUsername}) async {
+    try {
+      User? user = _auth.currentUser;
+      if (user != null) {
+        // Cập nhật lên Firebase Auth
+        await user.updateDisplayName(newUsername);
+        await user.reload();
+
+        // Cập nhật đồng bộ xuống bảng 'users' ở Firestore
+        await _firestore.collection('users').doc(user.uid).update({
+          'username': newUsername,
+        });
+        return "Success";
+      }
+      return "Lỗi: Không tìm thấy tài khoản.";
+    } catch (e) {
+      return "Lỗi cập nhật tên: ${e.toString()}";
+    }
+  }
+
+  // ==========================================
+  // 7. ĐỔI MẬT KHẨU CÓ XÁC THỰC LẠI (Dùng cho Edit Profile Screen)
+  // ==========================================
+  Future<String> changePasswordWithReAuth({
+    required String currentPassword,
+    required String newPassword
+  }) async {
+    try {
+      User? user = _auth.currentUser;
+
+      if (user != null && user.email != null) {
+        // 1. Tạo "chìa khóa" xác thực từ email và mật khẩu cũ
+        AuthCredential credential = EmailAuthProvider.credential(
+          email: user.email!,
+          password: currentPassword,
+        );
+
+        // 2. Bắt Firebase xác thực lại xem có đúng chủ nhân không
+        await user.reauthenticateWithCredential(credential);
+
+        // 3. Nếu đúng thì cho phép đổi mật khẩu mới
+        await user.updatePassword(newPassword);
+        return "Success";
+      }
+      return "Lỗi: Phiên đăng nhập không hợp lệ.";
+
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        return "Mật khẩu hiện tại không chính xác!";
+      }
+      return e.message ?? "Lỗi không xác định";
+    } catch (e) {
+      return e.toString();
     }
   }
 }
