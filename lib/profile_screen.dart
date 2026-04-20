@@ -1,3 +1,4 @@
+import 'package:englishlearningapp/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'editProfile_screen.dart';
@@ -64,7 +65,12 @@ class ProfileScreen extends StatelessWidget {
                         _buildMenuTile(
                           icon: Icons.settings_outlined,
                           title: 'Settings',
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                            );
+                          },
                         ),
                         _buildMenuTile(
                           icon: Icons.info_outline,
