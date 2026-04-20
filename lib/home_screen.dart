@@ -37,27 +37,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchVocabularyFromFirebase() async {
     try {
-      QuerySnapshot snapshot;
-
-      try {
-        // 1. Thử lấy dữ liệu từ Bộ nhớ đệm (Cache) của điện thoại siêu nhanh
-        snapshot = await FirebaseFirestore.instance
-            .collection('vocabularies')
-            .get(const GetOptions(source: Source.cache));
-
-        // 2. Nếu Cache trống -> Mới gọi lên Server
-        if (snapshot.docs.isEmpty) {
-          print("Chưa có Cache, đang tải 5000 từ từ Server (Chỉ tải 1 lần duy nhất)...");
-          snapshot = await FirebaseFirestore.instance
-              .collection('vocabularies')
-              .get(const GetOptions(source: Source.server));
-        } else {
-          print("Đã lấy thành công 5000 từ từ Cache điện thoại! Siêu tốc!");
-        }
-      } catch (e) {
-        // Dự phòng nếu có lỗi hệ thống, tự động fallback về Server
-        snapshot = await FirebaseFirestore.instance.collection('vocabularies').get();
-      }
+      // Để Firebase tự động xử lý Cache và Server thông minh nhất:
+      // - Có mạng: Kéo bản cập nhật mới nhất từ Server về (Rất nhanh vì nó chỉ tải phần thay đổi).
+      // - Mất mạng: Tự động lôi dữ liệu cũ từ Cache ra dùng.
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('vocabularies')
+          .get();
 
       List<Map<String, dynamic>> loadedWords = snapshot.docs.map((doc) {
         var data = doc.data() as Map<String, dynamic>;
@@ -72,6 +57,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _vocabularyDatabase = loadedWords;
         _isLoading = false;
       });
+
+      print("Đã tải và đồng bộ xong ${loadedWords.length} từ vựng");
+
     } catch (e) {
       print("Lỗi tải từ vựng: $e");
       setState(() {

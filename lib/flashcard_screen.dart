@@ -64,6 +64,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
+    print("Dữ liệu thẻ hiện tại: ${widget.wordData}");
     return Scaffold(
       //Cho phép nền tràn viền lên phía sau AppBar
       extendBodyBehindAppBar: true,
@@ -135,7 +136,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> with SingleTickerProv
 
     return Container(
       width: double.infinity,
-      height: 600,
+      height: 400,
       decoration: _cardDecoration(),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -173,7 +174,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> with SingleTickerProv
           ),
 
           const Spacer(),
-          const Text('Tap to see examples', style: TextStyle(color: Colors.grey, fontSize: 14)),
+          const Text('Tap to see definition and examples', style: TextStyle(color: Colors.grey, fontSize: 14)),
           const SizedBox(height: 20),
         ],
       ),
@@ -204,26 +205,76 @@ class _FlashcardScreenState extends State<FlashcardScreen> with SingleTickerProv
     );
   }
 
-  // ================= MẶT SAU (Danh sách ví dụ) =================
+// ================= MẶT SAU (Định nghĩa & Danh sách ví dụ) =================
   Widget _buildBackSide() {
+    // Lấy dữ liệu từ Database
+    String definition = widget.wordData['definition'] ?? 'Chưa có định nghĩa';
     List<dynamic> examples = widget.wordData['examples'] ?? [];
 
     return Container(
       width: double.infinity,
-      height: 450,
+      height: 600,
       decoration: _cardDecoration(),
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Tiêu đề Định nghĩa
           const Center(
-            child: Text('Examples', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1A56F6))),
+            child: Text(
+                'Definition',
+                style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A56F6)
+                )
+            ),
           ),
-          const Divider(height: 30, thickness: 2, color: Color(0xFFE3F2FD)),
+          const SizedBox(height: 12),
 
+          // Hiển thị nội dung Definition (In nghiêng và đổi màu nền cho nổi bật)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0F4FF), // Nền xanh cực nhạt
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: const Color(0xFFD6E4FF)),
+            ),
+            child: Text(
+              definition,
+              style: const TextStyle(
+                fontSize: 16,
+                fontStyle: FontStyle.italic,
+                color: Color(0xFF2E384D),
+                fontWeight: FontWeight.w500,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE3F2FD)),
+          const SizedBox(height: 20),
+
+          // Tiêu đề Ví dụ
+          const Text(
+              'Examples:',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A56F6)
+              )
+          ),
+          const SizedBox(height: 12),
+
+          // Danh sách Ví dụ
           Expanded(
             child: examples.isEmpty
-                ? const Center(child: Text('Chưa có ví dụ cho từ này', style: TextStyle(color: Colors.grey)))
+                ? const Center(
+                child: Text('Chưa có ví dụ cho từ này', style: TextStyle(color: Colors.grey))
+            )
                 : ListView.builder(
               itemCount: examples.length,
               itemBuilder: (context, index) {
@@ -232,11 +283,22 @@ class _FlashcardScreenState extends State<FlashcardScreen> with SingleTickerProv
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("• ", style: TextStyle(fontSize: 20, color: Color(0xFFFF5722), fontWeight: FontWeight.bold)),
+                      const Text(
+                          "• ",
+                          style: TextStyle(
+                              fontSize: 20,
+                              color: Color(0xFFFF5722),
+                              fontWeight: FontWeight.bold
+                          )
+                      ),
                       Expanded(
                         child: Text(
                           examples[index].toString(),
-                          style: const TextStyle(fontSize: 16, color: Color(0xFF2E384D), height: 1.5),
+                          style: const TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF2E384D),
+                              height: 1.5
+                          ),
                         ),
                       ),
                     ],
