@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
+import 'ai_chatbot_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -17,7 +18,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _pages = [
     const HomeScreen(),
     const Center(child: Text('Khóa học (Courses) - Đang xây dựng', style: TextStyle(fontSize: 18))),
-    const Center(child: Text('AI Chatbot - Đang xây dựng', style: TextStyle(fontSize: 18))),
+    const AIChatbotScreen(),
     const ProfileScreen(),
   ];
 
@@ -33,8 +34,11 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FF), // Màu nền xanh nhạt tổng thể của app
 
-      // Phần thân: Hiển thị giao diện tương ứng với tab được chọn
-      body: _pages[_selectedIndex],
+      // Phần thân: Hiển thị giao diện tương ứng với tab được chọn, giữ nguyên trạng thái
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _pages,
+      ),
 
       // ================= Bottom Navigation Bar =================
       bottomNavigationBar: Container(

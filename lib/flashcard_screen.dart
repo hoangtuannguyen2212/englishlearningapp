@@ -43,7 +43,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> with SingleTickerProv
   // Hàm cấu hình Text-to-Speech
   Future<void> _setupTts() async {
     await _flutterTts.setLanguage("en-UK"); // Đọc giọng tiếng Anh - Mỹ
-    await _flutterTts.setSpeechRate(0.5);   // Tốc độ đọc
+    await _flutterTts.setSpeechRate(0.4);   // Tốc độ đọc
     await _flutterTts.setPitch(1.0);        // Độ trầm bổng
   }
 
