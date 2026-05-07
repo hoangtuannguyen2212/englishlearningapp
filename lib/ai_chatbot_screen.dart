@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class AIChatbotScreen extends StatefulWidget {
   const AIChatbotScreen({super.key});
@@ -20,10 +23,11 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
   @override
   void initState() {
     super.initState();
+    final String apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
     // Khởi tạo Model Gemini với hướng dẫn hệ thống
     _model = GenerativeModel(
       model: 'gemini-2.5-flash',
-      apiKey: 'AIzaSyDur16fCErc0hR49q7nZzcUsl0DaI8_wl0',
+      apiKey: apiKey,
       systemInstruction: Content.system(
           "Bạn là một giáo viên dạy tiếng Anh nhiệt tình. "
               "Hãy trả lời bằng tiếng Việt nếu người dùng hỏi bằng tiếng Việt, "
@@ -31,10 +35,33 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
     );
     _chat = _model.startChat();
 
-    _messages.add({
-      'role': 'ai',
-      'text': 'Xin chào! Tôi là trợ lý tiếng Anh của bạn. Bạn muốn học gì hôm nay?'
-    });
+    _loadChatHistory();
+  }
+
+  Future<void> _saveChatHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('chat_history', jsonEncode(_messages));
+  }
+
+  Future<void> _loadChatHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? savedHistory = prefs.getString('chat_history');
+
+    if (savedHistory != null) {
+      setState(() {
+        _messages.clear();
+        final List<dynamic> decoded = jsonDecode(savedHistory);
+        _messages.addAll(decoded.map((item) => Map<String, String>.from(item)).toList());
+      });
+      _scrollToBottom();
+    } else {
+      setState(() {
+        _messages.add({
+          'role': 'ai',
+          'text': 'Xin chào! Tôi là trợ lý tiếng Anh của bạn. Bạn muốn học gì hôm nay?'
+        });
+      });
+    }
   }
 
   void _scrollToBottom() {
@@ -68,9 +95,17 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
         _messages.add(
             {'role': 'ai', 'text': response.text ?? 'Tôi không hiểu ý bạn...'});
       });
+      _saveChatHistory();
     } catch (e) {
+      String errorMessage = 'Lỗi kết nối: $e';
+      if (e.toString().contains('503')) {
+        errorMessage = 'Hệ thống AI đang quá tải. Bạn vui lòng đợi một lát rồi thử lại nhé!';
+      } else if (e.toString().contains('429')) {
+        errorMessage = 'Bạn đã gửi quá nhiều yêu cầu. Vui lòng đợi một chút nhé!';
+      }
+
       setState(() {
-        _messages.add({'role': 'ai', 'text': 'Lỗi kết nối: $e'});
+        _messages.add({'role': 'ai', 'text': errorMessage});
       });
     } finally {
       setState(() => _isLoading = false);
@@ -100,9 +135,15 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
                 value: 'clear',
                 child: Row(
                   children: [
-                    Icon(Icons.delete_outline, color: Colors.black87),
-                    SizedBox(width: 8),
-                    Text('Delete chat history'),
+                    Icon(Icons.delete_outline, color: Colors.redAccent),
+                    SizedBox(width: 12),
+                    Text(
+                      'Xóa lịch sử chat',
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -135,22 +176,103 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
   void _showClearConfirmation() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete history'),
-        content: const Text('Are you sure you want to delete your entire chat history?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Biểu tượng thùng rác nổi bật
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.delete_forever_rounded,
+                  color: Colors.redAccent,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Tiêu đề
+              const Text(
+                'Xóa lịch sử chat?',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E384D),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Nội dung mô tả
+              const Text(
+                'Tất cả tin nhắn cũ sẽ biến mất vĩnh viễn. Bạn có chắc chắn muốn thực hiện hành động này không?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Hai nút bấm Hủy và Xóa
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      child: Text(
+                        'Hủy',
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _clearChat();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Xóa',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _clearChat();
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -163,6 +285,7 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
         'role': 'ai',
         'text': 'Xin chào! Tôi là trợ lý tiếng Anh của bạn. Bạn muốn học gì hôm nay?'
       });
+      _saveChatHistory();
     });
   }
 

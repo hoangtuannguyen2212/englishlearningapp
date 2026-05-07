@@ -1,10 +1,10 @@
 import 'package:englishlearningapp/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'editProfile_screen.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  const ProfileScreen({super.key});
 
   //Tự động lấy chữ cái đầu của Tên hoặc Email làm Avatar
   String _getInitials(String? displayName, String? email) {
@@ -23,74 +23,83 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lấy thông tin user đang đăng nhập từ Firebase
-    final User? user = FirebaseAuth.instance.currentUser;
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.userChanges(),
+      builder: (context, snapshot) {
+        // Lấy thông tin user từ snapshot (luôn cập nhật mới nhất)
+        final User? user = snapshot.data;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // Lớp 1: Background Gradient
-          _buildBackground(),
+        return Scaffold(
+          backgroundColor: Colors.white,
+          body: Stack(
+            children: [
+              // Lớp 1: Background Gradient
+              _buildBackground(),
 
-          // Lớp 2: Nội dung chính
-          SafeArea(
-            child: Column(
-              children: [
-                // AppBar trong suốt
-                _buildAppBar(),
+              // Lớp 2: Nội dung chính
+              SafeArea(
+                child: Column(
+                  children: [
+                    // AppBar trong suốt
+                    _buildAppBar(),
 
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 20),
-                        // Truyền context và user vào Profile Header
-                        _buildProfileHeader(context, user),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 20),
+                            // Truyền context và user vào Profile Header
+                            _buildProfileHeader(context, user),
 
-                        const SizedBox(height: 40),
+                            const SizedBox(height: 40),
 
-                        // Danh sách các nút Menu
-                        _buildMenuTile(
-                          icon: Icons.person_outline,
-                          title: 'Edit Profile',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const EditProfileScreen()),
-                            );
-                          },
+                            // Danh sách các nút Menu
+                            _buildMenuTile(
+                              icon: Icons.person_outline,
+                              title: 'Edit Profile',
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          const EditProfileScreen()),
+                                );
+                              },
+                            ),
+                            _buildMenuTile(
+                              icon: Icons.settings_outlined,
+                              title: 'Settings',
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          const SettingsScreen()),
+                                );
+                              },
+                            ),
+                            _buildMenuTile(
+                              icon: Icons.info_outline,
+                              title: 'Terms of Service',
+                              onTap: () {},
+                            ),
+                            _buildMenuTile(
+                              icon: Icons.privacy_tip_outlined,
+                              title: 'Privacy policy',
+                              onTap: () {},
+                            ),
+                          ],
                         ),
-                        _buildMenuTile(
-                          icon: Icons.settings_outlined,
-                          title: 'Settings',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                            );
-                          },
-                        ),
-                        _buildMenuTile(
-                          icon: Icons.info_outline,
-                          title: 'Terms of Service',
-                          onTap: () {},
-                        ),
-                        _buildMenuTile(
-                          icon: Icons.privacy_tip_outlined,
-                          title: 'Privacy policy',
-                          onTap: () {},
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -217,7 +226,7 @@ class ProfileScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

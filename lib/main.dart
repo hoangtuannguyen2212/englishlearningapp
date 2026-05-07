@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // 1. Thêm gói Auth để kiểm tra trạng thái
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 import 'auth_screen.dart';
-import 'main_screen.dart'; // 2. Thêm MainScreen để chuẩn bị chuyển trang
+import 'main_screen.dart';
 
 void main() async {
   // Đảm bảo Flutter đã sẵn sàng trước khi gọi Firebase
@@ -13,6 +14,8 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  await dotenv.load(fileName: ".env");
 
   runApp(const MyApp());
 }

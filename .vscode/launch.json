@@ -1,0 +1,10 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "englishlearningapp (Flutter SM N960U)",
+      "request": "launch",
+      "type": "dart"
+    }
+  ]
+}

@@ -58,10 +58,10 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
 
-      print("Đã tải và đồng bộ xong ${loadedWords.length} từ vựng");
+      debugPrint("Đã tải và đồng bộ xong ${loadedWords.length} từ vựng");
 
     } catch (e) {
-      print("Lỗi tải từ vựng: $e");
+      debugPrint("Lỗi tải từ vựng: $e");
       setState(() {
         _isLoading = false;
       });

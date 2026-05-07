@@ -6,7 +6,7 @@ class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
   @override
-  _AuthScreenState createState() => _AuthScreenState();
+  State<AuthScreen> createState() => _AuthScreenState();
 }
 
 class _AuthScreenState extends State<AuthScreen> {
@@ -42,6 +42,8 @@ class _AuthScreenState extends State<AuthScreen> {
 
     setState(() => isLoading = false);
 
+    if (!mounted) return;
+
     if (result == "Successful") {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -53,8 +55,6 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
       );
 
-      //Chuyển hướng sang MainScreen và xóa trang Login
-      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const MainScreen()),
@@ -244,7 +244,6 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     final Color primaryColor = const Color(0xFF2C4B61);
-    final Color lightBlue = const Color(0xFFE3F2FD);
     final Color accentBlue = const Color(0xFF8BB9D9);
 
     return Scaffold(

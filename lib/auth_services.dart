@@ -147,6 +147,46 @@ class AuthService {
   }
 
   // ==========================================
+  // 6b. ĐỔI TÊN NGƯỜI DÙNG CÓ XÁC THỰC LẠI
+  // ==========================================
+  Future<String> updateUsernameWithReAuth({
+    required String currentPassword,
+    required String newUsername,
+  }) async {
+    try {
+      User? user = _auth.currentUser;
+      if (user != null && user.email != null) {
+        // 1. Xác thực lại
+        AuthCredential credential = EmailAuthProvider.credential(
+          email: user.email!,
+          password: currentPassword,
+        );
+        await user.reauthenticateWithCredential(credential);
+
+        // 2. Cập nhật Display Name
+        await user.updateDisplayName(newUsername);
+        await user.reload();
+
+        // 3. Cập nhật Firestore
+        await _firestore.collection('users').doc(user.uid).update({
+          'username': newUsername,
+        });
+        return "Success";
+      }
+      return "Lỗi: Phiên đăng nhập không hợp lệ.";
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password' || 
+          e.code == 'invalid-credential' || 
+          e.message?.contains('auth credential is incorrect') == true) {
+        return "Mật khẩu hiện tại không chính xác!";
+      }
+      return e.message ?? "Lỗi xác thực";
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  // ==========================================
   // 7. ĐỔI MẬT KHẨU CÓ XÁC THỰC LẠI (Dùng cho Edit Profile Screen)
   // ==========================================
   Future<String> changePasswordWithReAuth({
@@ -173,7 +213,9 @@ class AuthService {
       return "Lỗi: Phiên đăng nhập không hợp lệ.";
 
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+      if (e.code == 'wrong-password' || 
+          e.code == 'invalid-credential' || 
+          e.message?.contains('auth credential is incorrect') == true) {
         return "Mật khẩu hiện tại không chính xác!";
       }
       return e.message ?? "Lỗi không xác định";

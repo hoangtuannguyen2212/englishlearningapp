@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  const SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -57,7 +57,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         // Dùng CupertinoSwitch
                         trailing: CupertinoSwitch(
                           value: _isNotificationOn,
-                          activeColor: const Color(0xFF2962FF),
+                          activeTrackColor: const Color(0xFF2962FF),
                           onChanged: (bool value) {
                             setState(() {
                               _isNotificationOn = value; // Cập nhật trạng thái
@@ -74,7 +74,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         title: 'Dark Mode',
                         trailing: CupertinoSwitch(
                           value: _isDarkModeOn,
-                          activeColor: const Color(0xFF2962FF),
+                          activeTrackColor: const Color(0xFF2962FF),
                           onChanged: (bool value) {
                             setState(() {
                               _isDarkModeOn = value; // Cập nhật trạng thái
@@ -135,7 +135,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
