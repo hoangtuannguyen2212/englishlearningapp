@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
+import 'locale_provider.dart';
+import 'app_localizations.dart';
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -14,53 +17,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    final localeProvider = Provider.of<LocaleProvider>(context);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // 1. Lớp nền Gradient xanh
           _buildBackground(),
 
-          // 2. Nội dung chính
           SafeArea(
             child: Column(
               children: [
-                _buildAppBar(context),
+                _buildAppBar(context, s),
 
                 Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
                     children: [
-                      // Nút Language (Có chữ EN ở cuối)
                       _buildSettingTile(
                         icon: Icons.language,
-                        title: 'Language',
-                        trailing: const Text(
-                          'EN',
-                          style: TextStyle(
+                        title: s.language,
+                        trailing: Text(
+                          localeProvider.locale.toUpperCase(),
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
                             color: Colors.black54,
                           ),
                         ),
-                        onTap: () {
-                          // Logic mở bảng chọn ngôn ngữ sau này
-                        },
+                        onTap: () => _showLanguagePicker(context, s, localeProvider),
                       ),
 
                       const SizedBox(height: 16),
 
-                      // Nút Notification (Có nút gạt)
                       _buildSettingTile(
                         icon: Icons.notifications_none_outlined,
-                        title: 'Notification',
-                        // Dùng CupertinoSwitch
+                        title: s.notification,
                         trailing: CupertinoSwitch(
                           value: _isNotificationOn,
                           activeTrackColor: const Color(0xFF2962FF),
                           onChanged: (bool value) {
                             setState(() {
-                              _isNotificationOn = value; // Cập nhật trạng thái
+                              _isNotificationOn = value;
                             });
                           },
                         ),
@@ -68,18 +67,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                       const SizedBox(height: 16),
 
-                      // Nút Dark Mode
                       _buildSettingTile(
                         icon: Icons.dark_mode_outlined,
-                        title: 'Dark Mode',
+                        title: s.darkMode,
                         trailing: CupertinoSwitch(
                           value: _isDarkModeOn,
                           activeTrackColor: const Color(0xFF2962FF),
                           onChanged: (bool value) {
                             setState(() {
-                              _isDarkModeOn = value; // Cập nhật trạng thái
+                              _isDarkModeOn = value;
                             });
-                            // Logic đổi theme của app sẽ viết ở đây sau
                           },
                         ),
                       ),
@@ -94,22 +91,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showLanguagePicker(BuildContext context, AppStrings s, LocaleProvider localeProvider) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(s.selectLanguage, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const Text('🇬🇧', style: TextStyle(fontSize: 24)),
+                title: Text(s.english),
+                trailing: localeProvider.locale == 'en'
+                    ? const Icon(Icons.check_circle, color: Color(0xFF1A56F6))
+                    : null,
+                onTap: () {
+                  localeProvider.setLocale('en');
+                  Navigator.pop(ctx);
+                },
+              ),
+              ListTile(
+                leading: const Text('🇻🇳', style: TextStyle(fontSize: 24)),
+                title: Text(s.vietnamese),
+                trailing: localeProvider.locale == 'vi'
+                    ? const Icon(Icons.check_circle, color: Color(0xFF1A56F6))
+                    : null,
+                onTap: () {
+                  localeProvider.setLocale('vi');
+                  Navigator.pop(ctx);
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // --- CÁC WIDGET THÀNH PHẦN ---
 
-  Widget _buildAppBar(BuildContext context) {
+  Widget _buildAppBar(BuildContext context, AppStrings s) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
       child: Row(
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.black87),
-            onPressed: () => Navigator.pop(context), // Bấm nút back để quay lại Profile
+            onPressed: () => Navigator.pop(context),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Settings',
+              s.settings,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,

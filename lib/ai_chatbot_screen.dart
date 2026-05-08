@@ -4,6 +4,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'app_localizations.dart';
 
 class AIChatbotScreen extends StatefulWidget {
   const AIChatbotScreen({super.key});
@@ -58,7 +59,7 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
       setState(() {
         _messages.add({
           'role': 'ai',
-          'text': 'Xin chào! Tôi là trợ lý tiếng Anh của bạn. Bạn muốn học gì hôm nay?'
+          'text': 'Hello! I am your English assistant. What would you like to learn today?'
         });
       });
     }
@@ -93,15 +94,15 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
       final response = await _chat.sendMessage(Content.text(userText));
       setState(() {
         _messages.add(
-            {'role': 'ai', 'text': response.text ?? 'Tôi không hiểu ý bạn...'});
+            {'role': 'ai', 'text': response.text ?? 'I don\'t understand...'});
       });
       _saveChatHistory();
     } catch (e) {
-      String errorMessage = 'Lỗi kết nối: $e';
+      String errorMessage = 'Connection error: $e';
       if (e.toString().contains('503')) {
-        errorMessage = 'Hệ thống AI đang quá tải. Bạn vui lòng đợi một lát rồi thử lại nhé!';
+        errorMessage = 'AI system is overloaded. Please wait a moment and try again!';
       } else if (e.toString().contains('429')) {
-        errorMessage = 'Bạn đã gửi quá nhiều yêu cầu. Vui lòng đợi một chút nhé!';
+        errorMessage = 'Too many requests. Please wait a moment!';
       }
 
       setState(() {
@@ -118,7 +119,7 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FF),
       appBar: AppBar(
-        title: const Text('AI Assistant',
+        title: Text(AppStrings.of(context).aiAssistant,
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: const Color(0xFF1A56F6),
         centerTitle: true,
@@ -131,15 +132,15 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'clear',
                 child: Row(
                   children: [
-                    Icon(Icons.delete_outline, color: Colors.redAccent),
-                    SizedBox(width: 12),
+                    const Icon(Icons.delete_outline, color: Colors.redAccent),
+                    const SizedBox(width: 12),
                     Text(
-                      'Xóa lịch sử chat',
-                      style: TextStyle(
+                      AppStrings.of(context).clearChatHistory,
+                      style: const TextStyle(
                         color: Colors.redAccent,
                         fontWeight: FontWeight.w500,
                       ),
@@ -200,9 +201,9 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
               const SizedBox(height: 24),
 
               // Tiêu đề
-              const Text(
-                'Xóa lịch sử chat?',
-                style: TextStyle(
+              Text(
+                AppStrings.of(context).clearChatConfirm,
+                style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF2E384D),
@@ -210,11 +211,10 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Nội dung mô tả
-              const Text(
-                'Tất cả tin nhắn cũ sẽ biến mất vĩnh viễn. Bạn có chắc chắn muốn thực hiện hành động này không?',
+              Text(
+                AppStrings.of(context).clearChatDesc,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 15,
                   color: Colors.grey,
                   height: 1.5,
@@ -236,7 +236,7 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
                         side: BorderSide(color: Colors.grey.shade300),
                       ),
                       child: Text(
-                        'Hủy',
+                        AppStrings.of(context).cancel,
                         style: TextStyle(
                           color: Colors.grey.shade700,
                           fontWeight: FontWeight.w600,
@@ -259,8 +259,8 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
                         ),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        'Xóa',
+                      child: Text(
+                        AppStrings.of(context).delete,
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,

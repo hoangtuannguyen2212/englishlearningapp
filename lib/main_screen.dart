@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
+import 'courses_screen.dart';
 import 'profile_screen.dart';
 import 'ai_chatbot_screen.dart';
+import 'app_localizations.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -17,7 +19,7 @@ class _MainScreenState extends State<MainScreen> {
   // Danh sách các màn hình trống (sẽ thay thế bằng các file thật sau này)
   final List<Widget> _pages = [
     const HomeScreen(),
-    const Center(child: Text('Khóa học (Courses) - Đang xây dựng', style: TextStyle(fontSize: 18))),
+    const CoursesScreen(),
     const AIChatbotScreen(),
     const ProfileScreen(),
   ];
@@ -31,16 +33,16 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F9FF), // Màu nền xanh nhạt tổng thể của app
+    final s = AppStrings.of(context);
 
-      // Phần thân: Hiển thị giao diện tương ứng với tab được chọn, giữ nguyên trạng thái
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F9FF),
+
       body: IndexedStack(
         index: _selectedIndex,
         children: _pages,
       ),
 
-      // ================= Bottom Navigation Bar =================
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -48,38 +50,38 @@ class _MainScreenState extends State<MainScreen> {
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 20,
-              offset: const Offset(0, -5), // Tạo bóng đổ nhẹ lên trên
+              offset: const Offset(0, -5),
             ),
           ],
         ),
         child: BottomNavigationBar(
-          items: const <BottomNavigationBarItem>[
+          items: <BottomNavigationBarItem>[
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: 'Home',
+              icon: const Icon(Icons.home_outlined),
+              activeIcon: const Icon(Icons.home),
+              label: s.home,
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.menu_book_outlined),
-              activeIcon: Icon(Icons.menu_book),
-              label: 'Courses',
+              icon: const Icon(Icons.menu_book_outlined),
+              activeIcon: const Icon(Icons.menu_book),
+              label: s.courses,
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.forum_outlined), // Icon hộp thoại chat
-              activeIcon: Icon(Icons.forum),
-              label: 'AI Chatbot',
+              icon: const Icon(Icons.forum_outlined),
+              activeIcon: const Icon(Icons.forum),
+              label: s.aiChatbot,
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: 'Me',
+              icon: const Icon(Icons.person_outline),
+              activeIcon: const Icon(Icons.person),
+              label: s.me,
             ),
           ],
           currentIndex: _selectedIndex,
           selectedItemColor: const Color(0xFF2B3FD4),
-          unselectedItemColor: const Color(0xFF6B7280), // Màu xám cho tab chưa chọn
+          unselectedItemColor: const Color(0xFF6B7280),
           onTap: _onItemTapped,
-          type: BottomNavigationBarType.fixed, // Đảm bảo luôn hiện chữ
+          type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
           elevation: 0,
           showSelectedLabels: true,

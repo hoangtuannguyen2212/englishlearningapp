@@ -2,6 +2,7 @@ import 'package:englishlearningapp/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'edit_profile_screen.dart';
+import 'app_localizations.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -57,7 +58,7 @@ class ProfileScreen extends StatelessWidget {
                             // Danh sách các nút Menu
                             _buildMenuTile(
                               icon: Icons.person_outline,
-                              title: 'Edit Profile',
+                              title: AppStrings.of(context).editProfile,
                               onTap: () {
                                 Navigator.push(
                                   context,
@@ -69,7 +70,7 @@ class ProfileScreen extends StatelessWidget {
                             ),
                             _buildMenuTile(
                               icon: Icons.settings_outlined,
-                              title: 'Settings',
+                              title: AppStrings.of(context).settings,
                               onTap: () {
                                 Navigator.push(
                                   context,
@@ -81,12 +82,12 @@ class ProfileScreen extends StatelessWidget {
                             ),
                             _buildMenuTile(
                               icon: Icons.info_outline,
-                              title: 'Terms of Service',
+                              title: AppStrings.of(context).termsOfService,
                               onTap: () {},
                             ),
                             _buildMenuTile(
                               icon: Icons.privacy_tip_outlined,
-                              title: 'Privacy policy',
+                              title: AppStrings.of(context).privacyPolicy,
                               onTap: () {},
                             ),
                           ],
@@ -113,8 +114,8 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _buildProfileHeader(BuildContext context, User? user) {
     // Xử lý dữ liệu fallback nếu người dùng chưa cập nhật tên/email
-    final String displayName = user?.displayName ?? "Người dùng";
-    final String email = user?.email ?? "Chưa cập nhật email";
+    final String displayName = user?.displayName ?? AppStrings.of(context).defaultUser;
+    final String email = user?.email ?? AppStrings.of(context).noEmail;
     final String initials = _getInitials(user?.displayName, user?.email);
 
     return Row(
@@ -195,11 +196,11 @@ class ProfileScreen extends StatelessWidget {
             PopupMenuItem<String>(
               value: 'logout',
               child: Row(
-                children: const [
-                  Icon(Icons.logout, color: Colors.blueGrey, size: 20),
-                  SizedBox(width: 10),
+                children: [
+                  const Icon(Icons.logout, color: Colors.blueGrey, size: 20),
+                  const SizedBox(width: 10),
                   Text(
-                    'Log Out',
+                    AppStrings.of(context).logOut,
                     style: TextStyle(
                         color: Colors.redAccent,
                         fontWeight: FontWeight.w500

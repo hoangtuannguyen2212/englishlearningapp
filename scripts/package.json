@@ -1,0 +1,12 @@
+{
+  "name": "classify-vocabulary",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "classify": "node classify_words.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "@google/generative-ai": "^0.21.0"
+  }
+}

@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'app_localizations.dart';
 
 class FlashcardScreen extends StatefulWidget {
   final Map<String, dynamic> wordData;
@@ -68,7 +69,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> with SingleTickerProv
       await _audioPlayer.play(UrlSource(url));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không có âm thanh cho từ này!')),
+        const SnackBar(content: Text('No audio available for this word!')),
       );
     }
   }
@@ -209,7 +210,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> with SingleTickerProv
 
 // ================= MẶT SAU =================
   Widget _buildBackSide() {
-    String definition = widget.wordData['definition'] ?? 'Chưa có định nghĩa';
+    String definition = widget.wordData['definition'] ?? AppStrings.of(context).noDefinition;
     List<dynamic> examples = widget.wordData['examples'] ?? [];
 
     return Container(
@@ -282,7 +283,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> with SingleTickerProv
 
           Expanded(
             child: examples.isEmpty
-                ? const Center(child: Text('Chưa có ví dụ cho từ này', style: TextStyle(color: Colors.grey)))
+                ? Center(child: Text(AppStrings.of(context).noExamples, style: const TextStyle(color: Colors.grey)))
                 : ListView.builder(
               itemCount: examples.length,
               itemBuilder: (context, index) {

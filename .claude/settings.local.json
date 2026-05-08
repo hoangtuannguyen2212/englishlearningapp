@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(node classify_words.js)",
+      "Bash(node check_lessons.js topic_it 01)",
+      "Bash(node check_lessons.js topic_food 01)",
+      "Bash(node check_lessons.js topic_health 01)",
+      "Bash(node check_lessons.js topic_education 01)",
+      "Bash(flutter analyze *)",
+      "Bash(flutter pub *)"
+    ]
+  }
+}

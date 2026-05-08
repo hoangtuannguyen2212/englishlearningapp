@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'auth_services.dart';
+import 'app_localizations.dart';
 
 class EditProfileScreen extends StatelessWidget {
   const EditProfileScreen({super.key});
@@ -24,28 +25,25 @@ class EditProfileScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
                     children: [
-                      // Nút Change Username
                       _buildActionTile(
                         icon: Icons.person_outline,
-                        title: 'Change Username',
+                        title: AppStrings.of(context).changeUsername,
                         onTap: () => _showChangeUsernameSheet(context),
                       ),
 
                       const SizedBox(height: 16),
 
-                      // Nút Forgot Password
                       _buildActionTile(
                         icon: Icons.lock_reset,
-                        title: 'Forgot Password',
+                        title: AppStrings.of(context).forgotPassword,
                         onTap: () => _showForgotPasswordSheet(context),
                       ),
 
                       const SizedBox(height: 16),
 
-                      // Nút Change Password
                       _buildActionTile(
-                        icon: Icons.vpn_key_outlined, // Icon chìa khóa
-                        title: 'Change Password',
+                        icon: Icons.vpn_key_outlined,
+                        title: AppStrings.of(context).changePassword,
                         onTap: () => _showChangePasswordSheet(context),
                       ),
                     ],
@@ -110,7 +108,10 @@ class EditProfileScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20.0,
+              vertical: 16.0,
+            ),
             child: Row(
               children: [
                 Icon(icon, color: Colors.black87, size: 24),
@@ -144,11 +145,7 @@ class EditProfileScreen extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFE3F2FD),
-            Color(0xFFF3F8FF),
-            Colors.white,
-          ],
+          colors: [Color(0xFFE3F2FD), Color(0xFFF3F8FF), Colors.white],
           stops: [0.0, 0.4, 1.0],
         ),
       ),
@@ -181,21 +178,22 @@ class EditProfileScreen extends StatelessWidget {
                 children: [
                   _buildSheetIndicator(),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Change Username',
-                    style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blueAccent),
+                  Text(
+                    AppStrings.of(context).changeUsername,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blueAccent,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   _buildTextField(
-                    hintText: 'New username',
+                    hintText: AppStrings.of(context).newUsername,
                     controller: usernameController,
                   ),
                   const SizedBox(height: 16),
                   _buildTextField(
-                    hintText: 'Current password',
+                    hintText: AppStrings.of(context).currentPassword,
                     controller: passwordController,
                     isPassword: true,
                     obscureText: obscurePassword,
@@ -204,56 +202,72 @@ class EditProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   _buildSaveButton(
-                      isLoading: isLoading, // Truyền trạng thái loading vào nút
-                      onPressed: () async {
-                        // 1. Thu hồi bàn phím ngay lập tức
-                        FocusScope.of(context).unfocus();
+                    context: context,
+                    isLoading: isLoading, // Truyền trạng thái loading vào nút
+                    onPressed: () async {
+                      // 1. Thu hồi bàn phím ngay lập tức
+                      FocusScope.of(context).unfocus();
 
-                        String newName = usernameController.text.trim();
-                        String currentPass = passwordController.text;
-                        String? currentDisplayName = FirebaseAuth.instance.currentUser?.displayName;
+                      String newName = usernameController.text.trim();
+                      String currentPass = passwordController.text;
+                      String? currentDisplayName =
+                          FirebaseAuth.instance.currentUser?.displayName;
 
-                        if (newName.isEmpty) {
-                          _showErrorSnackBar(context, "Vui lòng nhập tên người dùng");
-                          return;
-                        }
+                      if (newName.isEmpty) {
+                        _showErrorSnackBar(
+                          context,
+                          AppStrings.of(context).pleaseEnterUsername,
+                        );
+                        return;
+                      }
 
-                        // 2. Kiểm tra nếu tên mới trùng tên cũ
-                        if (newName == currentDisplayName) {
-                          _showErrorSnackBar(context, "Tên mới trùng với tên hiện tại!");
-                          return;
-                        }
+                      // 2. Kiểm tra nếu tên mới trùng tên cũ
+                      if (newName == currentDisplayName) {
+                        _showErrorSnackBar(
+                          context,
+                          AppStrings.of(context).sameUsername,
+                        );
+                        return;
+                      }
 
-                        if (currentPass.isEmpty) {
-                          _showErrorSnackBar(context, "Vui lòng nhập mật khẩu xác nhận");
-                          return;
-                        }
+                      if (currentPass.isEmpty) {
+                        _showErrorSnackBar(
+                          context,
+                          AppStrings.of(context).pleaseEnterPassword,
+                        );
+                        return;
+                      }
 
-                        // loading
+                      // loading
+                      setState(() {
+                        isLoading = true;
+                      });
+
+                      //  Chờ Firebase xử lý
+                      String result = await AuthService()
+                          .updateUsernameWithReAuth(
+                            currentPassword: currentPass,
+                            newUsername: newName,
+                          );
+
+                      if (context.mounted) {
                         setState(() {
-                          isLoading = true;
+                          isLoading = false;
                         });
-
-                        //  Chờ Firebase xử lý
-                        String result = await AuthService()
-                            .updateUsernameWithReAuth(
-                                currentPassword: currentPass,
-                                newUsername: newName);
-
-                        if (context.mounted) {
-                          setState(() {
-                            isLoading = false;
-                          });
-                          if (result == "Success") {
-                            Navigator.pop(context); // Đóng bảng
-                            _showSuccessSnackBar(context, "Đổi tên thành công!");
-                          } else {
-                            // 3. Nếu sai mật khẩu hoặc có lỗi, xóa trắng ô mật khẩu để user nhập lại
-                            passwordController.clear();
-                            _showErrorSnackBar(context, result);
-                          }
+                        if (result == "Success") {
+                          Navigator.pop(context); // Đóng bảng
+                          _showSuccessSnackBar(
+                            context,
+                            AppStrings.of(context).usernameChanged,
+                          );
+                        } else {
+                          // 3. Nếu sai mật khẩu hoặc có lỗi, xóa trắng ô mật khẩu để user nhập lại
+                          passwordController.clear();
+                          _showErrorSnackBar(context, result);
                         }
-                      }),
+                      }
+                    },
+                  ),
                   const SizedBox(height: 16),
                 ],
               ),
@@ -284,22 +298,23 @@ class EditProfileScreen extends StatelessWidget {
                 children: [
                   _buildSheetIndicator(),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Forgot Password',
-                    style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blueAccent),
+                  Text(
+                    AppStrings.of(context).forgotPassword,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blueAccent,
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Chúng tôi sẽ gửi một liên kết đặt lại mật khẩu đến địa chỉ email sau:',
+                  Text(
+                    AppStrings.of(context).forgotPasswordDesc,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: Colors.black54),
+                    style: const TextStyle(fontSize: 14, color: Colors.black54),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    email ?? "Không tìm thấy email",
+                    email ?? AppStrings.of(context).emailNotFound,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -308,28 +323,40 @@ class EditProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   _buildSaveButton(
+                    context: context,
                     isLoading: isLoading,
                     onPressed: () async {
                       if (email == null) {
-                        _showErrorSnackBar(context, "Lỗi: Không tìm thấy email người dùng.");
+                        _showErrorSnackBar(
+                          context,
+                          AppStrings.of(context).emailNotFound,
+                        );
                         return;
                       }
 
                       setState(() => isLoading = true);
 
-                      String result = await AuthService().resetPassword(email: email);
+                      String result = await AuthService().resetPassword(
+                        email: email,
+                      );
 
                       if (context.mounted) {
                         setState(() => isLoading = false);
                         if (result.startsWith("Success")) {
                           Navigator.pop(context);
-                          _showSuccessSnackBar(context, "Link đặt lại mật khẩu đã được gửi! Vui lòng kiểm tra email và đăng nhập lại.");
+                          _showSuccessSnackBar(
+                            context,
+                            AppStrings.of(context).resetLinkSent,
+                          );
 
                           // Chờ 2 giây để người dùng đọc thông báo rồi logout
                           Future.delayed(const Duration(seconds: 2), () {
                             FirebaseAuth.instance.signOut();
                             if (context.mounted) {
-                              Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                              Navigator.of(context).pushNamedAndRemoveUntil(
+                                '/login',
+                                (route) => false,
+                              );
                             }
                           });
                         } else {
@@ -373,16 +400,17 @@ class EditProfileScreen extends StatelessWidget {
                 children: [
                   _buildSheetIndicator(),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Change Password',
-                    style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blueAccent),
+                  Text(
+                    AppStrings.of(context).changePassword,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blueAccent,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   _buildTextField(
-                    hintText: 'Current password',
+                    hintText: AppStrings.of(context).currentPassword,
                     controller: currentPassController,
                     isPassword: true,
                     obscureText: obscureCurrent,
@@ -391,7 +419,7 @@ class EditProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   _buildTextField(
-                    hintText: 'New password',
+                    hintText: AppStrings.of(context).newPassword,
                     controller: newPassController,
                     isPassword: true,
                     obscureText: obscureNew,
@@ -400,7 +428,7 @@ class EditProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   _buildTextField(
-                    hintText: 'Confirm password',
+                    hintText: AppStrings.of(context).confirmPassword,
                     controller: confirmPassController,
                     isPassword: true,
                     obscureText: obscureConfirm,
@@ -409,56 +437,71 @@ class EditProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   _buildSaveButton(
-                      isLoading: isLoading, // Truyền trạng thái loading vào nút
-                      onPressed: () async {
-                        String currentPass = currentPassController.text;
-                        String newPass = newPassController.text;
-                        String confirmPass = confirmPassController.text;
+                    context: context,
+                    isLoading: isLoading, // Truyền trạng thái loading vào nút
+                    onPressed: () async {
+                      String currentPass = currentPassController.text;
+                      String newPass = newPassController.text;
+                      String confirmPass = confirmPassController.text;
 
-                        if (currentPass.isEmpty ||
-                            newPass.isEmpty ||
-                            confirmPass.isEmpty) {
-                          _showErrorSnackBar(context, "Vui lòng điền đủ thông tin");
-                          return;
-                        }
-                        if (newPass != confirmPass) {
-                          _showErrorSnackBar(context, "Mật khẩu mới không khớp!");
-                          return;
-                        }
+                      if (currentPass.isEmpty ||
+                          newPass.isEmpty ||
+                          confirmPass.isEmpty) {
+                        _showErrorSnackBar(
+                          context,
+                          AppStrings.of(context).pleaseFillAllFields,
+                        );
+                        return;
+                      }
+                      if (newPass != confirmPass) {
+                        _showErrorSnackBar(
+                          context,
+                          AppStrings.of(context).passwordsDoNotMatch,
+                        );
+                        return;
+                      }
 
-                        // 1. Bật vòng xoay loading
+                      // 1. Bật vòng xoay loading
+                      setState(() {
+                        isLoading = true;
+                      });
+
+                      // 2. Chờ Firebase xử lý
+                      String result = await AuthService()
+                          .changePasswordWithReAuth(
+                            currentPassword: currentPass,
+                            newPassword: newPass,
+                          );
+
+                      // 3. Tắt vòng xoay và hiển thị kết quả
+                      if (context.mounted) {
                         setState(() {
-                          isLoading = true;
+                          isLoading = false;
                         });
+                        if (result == "Success") {
+                          Navigator.pop(context);
+                          _showSuccessSnackBar(
+                            context,
+                            AppStrings.of(context).passwordChanged,
+                          );
 
-                        // 2. Chờ Firebase xử lý
-                        String result = await AuthService()
-                            .changePasswordWithReAuth(
-                                currentPassword: currentPass,
-                                newPassword: newPass);
-
-                        // 3. Tắt vòng xoay và hiển thị kết quả
-                        if (context.mounted) {
-                          setState(() {
-                            isLoading = false;
+                          // Chờ 2 giây để người dùng đọc thông báo rồi logout
+                          Future.delayed(const Duration(seconds: 2), () {
+                            FirebaseAuth.instance.signOut();
+                            if (context.mounted) {
+                              Navigator.of(context).pushNamedAndRemoveUntil(
+                                '/login',
+                                (route) => false,
+                              );
+                            }
                           });
-                          if (result == "Success") {
-                            Navigator.pop(context);
-                            _showSuccessSnackBar(context, "Đổi mật khẩu thành công! Vui lòng đăng nhập lại.");
-
-                            // Chờ 2 giây để người dùng đọc thông báo rồi logout
-                            Future.delayed(const Duration(seconds: 2), () {
-                              FirebaseAuth.instance.signOut();
-                              if (context.mounted) {
-                                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-                              }
-                            });
-                          } else {
-                            // Nếu lỗi (ví dụ sai pass cũ), không đóng bảng, chỉ báo lỗi để user sửa
-                            _showErrorSnackBar(context, result);
-                          }
+                        } else {
+                          // Nếu lỗi (ví dụ sai pass cũ), không đóng bảng, chỉ báo lỗi để user sửa
+                          _showErrorSnackBar(context, result);
                         }
-                      }),
+                      }
+                    },
+                  ),
                   const SizedBox(height: 16),
                 ],
               ),
@@ -472,7 +515,10 @@ class EditProfileScreen extends StatelessWidget {
   // --- CÁC WIDGET DÙNG CHUNG CHO BOTTOM SHEET ---
 
   // Khung viền của Bottom Sheet (màu xanh nhạt nhạt, bo góc trên)
-  Widget _bottomSheetContainer({required BuildContext context, required Widget child}) {
+  Widget _bottomSheetContainer({
+    required BuildContext context,
+    required Widget child,
+  }) {
     // Lấy chiều cao bàn phím để đẩy sheet lên không bị che mất
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
@@ -519,11 +565,16 @@ class EditProfileScreen extends StatelessWidget {
         hintStyle: const TextStyle(color: Colors.black45, fontSize: 14),
         filled: true,
         fillColor: Colors.transparent, // Hoặc cho màu xám/xanh nhạt
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 16,
+        ),
         // Bo góc và viền theo thiết kế
         enabledBorder: _outlineBorderCustom(),
-        focusedBorder:
-            _outlineBorderCustom(color: Colors.blueAccent, width: 1.5),
+        focusedBorder: _outlineBorderCustom(
+          color: Colors.blueAccent,
+          width: 1.5,
+        ),
         // Nút con mắt cho mật khẩu
         suffixIcon: isPassword
             ? IconButton(
@@ -539,8 +590,10 @@ class EditProfileScreen extends StatelessWidget {
   }
 
   // Custom border cho gọn code
-  OutlineInputBorder _outlineBorderCustom(
-      {Color color = Colors.black26, double width = 1.0}) {
+  OutlineInputBorder _outlineBorderCustom({
+    Color color = Colors.black26,
+    double width = 1.0,
+  }) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(color: color, width: width),
@@ -548,8 +601,11 @@ class EditProfileScreen extends StatelessWidget {
   }
 
   // Nút Save xanh đậm
-  Widget _buildSaveButton(
-      {required VoidCallback onPressed, bool isLoading = false}) {
+  Widget _buildSaveButton({
+    required BuildContext context,
+    required VoidCallback onPressed,
+    bool isLoading = false,
+  }) {
     return SizedBox(
       width: double.infinity,
       height: 50,
@@ -572,9 +628,9 @@ class EditProfileScreen extends StatelessWidget {
                   strokeWidth: 2.5,
                 ),
               )
-            : const Text(
-                'Save',
-                style: TextStyle(
+            : Text(
+                AppStrings.of(context).save,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -594,7 +650,11 @@ class EditProfileScreen extends StatelessWidget {
     _showTopNotification(context, message, false);
   }
 
-  void _showTopNotification(BuildContext context, String message, bool isError) {
+  void _showTopNotification(
+    BuildContext context,
+    String message,
+    bool isError,
+  ) {
     final overlay = Overlay.of(context);
     late OverlayEntry entry;
 
@@ -699,9 +759,10 @@ class _TopNotificationWidgetState extends State<_TopNotificationWidget>
                   child: Text(
                     widget.message,
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500),
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],
