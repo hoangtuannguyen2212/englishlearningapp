@@ -16,7 +16,6 @@ class _MainScreenState extends State<MainScreen> {
   // Biến lưu trữ vị trí tab đang được chọn (Mặc định là 0 - Home)
   int _selectedIndex = 0;
 
-  // Danh sách các màn hình trống (sẽ thay thế bằng các file thật sau này)
   final List<Widget> _pages = [
     const HomeScreen(),
     const CoursesScreen(),
@@ -38,10 +37,7 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FF),
 
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: _pages),
 
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -86,8 +82,14 @@ class _MainScreenState extends State<MainScreen> {
           elevation: 0,
           showSelectedLabels: true,
           showUnselectedLabels: true,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+          selectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w500,
+            fontSize: 12,
+          ),
         ),
       ),
     );
