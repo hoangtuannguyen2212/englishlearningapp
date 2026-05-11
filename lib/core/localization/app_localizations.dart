@@ -19,7 +19,7 @@ class AppStrings {
   // --- Navigation ---
   String get home => _isEn ? 'Home' : 'Trang chủ';
   String get courses => _isEn ? 'Courses' : 'Khóa học';
-  String get aiChatbot => _isEn ? 'AI Chatbot' : 'AI Chatbot';
+  String get aiChatbot => _isEn ? 'AI Assistant' : 'Trợ lý ảo';
   String get me => _isEn ? 'Me' : 'Cá nhân';
 
   // --- Auth Screen ---
@@ -82,6 +82,54 @@ class AppStrings {
       ? 'You have completed $title.\n$wordCount words reviewed!'
       : 'Bạn đã hoàn thành $title.\n$wordCount từ đã ôn tập!';
   String get noWordsFound => _isEn ? 'No words found' : 'Không tìm thấy từ nào';
+  String lessonWithTitle(String title) {
+    // Remove "Lesson " or "Bài học " prefix from title if it exists in the DB string
+    String cleanTitle = title.replaceAll(RegExp(r'^(Lesson|Bài học)\s*', caseSensitive: false), '');
+    return _isEn ? 'Lesson $cleanTitle' : 'Bài học $cleanTitle';
+  }
+  String topicWithTitle(String title) {
+    final Map<String, String> topicMap = {
+      'giáo dục': 'Education',
+      'education': 'Education',
+      'sức khỏe': 'Health',
+      'health': 'Health',
+      'y tế': 'Health',
+      'medical': 'Health',
+      'sức khỏe & y tế': 'Health',
+      'sức khỏe & y tế ': 'Health',
+      'du lịch': 'Travel',
+      'travel': 'Travel',
+      'công nghệ': 'IT',
+      'it': 'IT',
+      'ẩm thực': 'Food',
+      'food': 'Food',
+      'kinh doanh': 'Business',
+      'business': 'Business',
+      'nghề nghiệp': 'Career',
+      'career': 'Career',
+      'gia đình': 'Family',
+      'family': 'Family',
+      'thể thao': 'Sports',
+      'sports': 'Sports',
+    };
+
+    String key = title.toLowerCase().trim();
+    
+    // Kiểm tra khớp hoàn toàn hoặc chứa từ khóa
+    String? foundKey;
+    for (var entry in topicMap.keys) {
+      if (key == entry || key.contains(entry)) {
+        foundKey = entry;
+        break;
+      }
+    }
+
+    if (foundKey != null) {
+      return _isEn ? topicMap[foundKey]! : (foundKey == title.toLowerCase() ? title : foundKey);
+    }
+
+    return title;
+  }
 
   // --- Profile Screen ---
   String get editProfile => _isEn ? 'Edit Profile' : 'Chỉnh sửa hồ sơ';

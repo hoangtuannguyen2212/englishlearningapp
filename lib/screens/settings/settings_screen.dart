@@ -47,7 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             color: Colors.black54,
                           ),
                         ),
-                        onTap: () => _showLanguagePicker(context, s, localeProvider),
+                        onTap: () => localeProvider.toggleLocale(),
                       ),
 
                       const SizedBox(height: 16),
@@ -89,50 +89,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  void _showLanguagePicker(BuildContext context, AppStrings s, LocaleProvider localeProvider) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(s.selectLanguage, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 20),
-              ListTile(
-                leading: const Text('🇬🇧', style: TextStyle(fontSize: 24)),
-                title: Text(s.english),
-                trailing: localeProvider.locale == 'en'
-                    ? const Icon(Icons.check_circle, color: Color(0xFF1A56F6))
-                    : null,
-                onTap: () {
-                  localeProvider.setLocale('en');
-                  Navigator.pop(ctx);
-                },
-              ),
-              ListTile(
-                leading: const Text('🇻🇳', style: TextStyle(fontSize: 24)),
-                title: Text(s.vietnamese),
-                trailing: localeProvider.locale == 'vi'
-                    ? const Icon(Icons.check_circle, color: Color(0xFF1A56F6))
-                    : null,
-                onTap: () {
-                  localeProvider.setLocale('vi');
-                  Navigator.pop(ctx);
-                },
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        );
-      },
     );
   }
 

@@ -50,8 +50,6 @@ class _LessonsScreenState extends State<LessonsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final topicTitle = widget.topic['title'] ?? AppStrings.of(context).lessonsLabel;
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -63,7 +61,7 @@ class _LessonsScreenState extends State<LessonsScreen> {
         ),
         centerTitle: true,
         title: Text(
-          topicTitle,
+          AppStrings.of(context).topicWithTitle(widget.topic['title'] ?? ''),
           style: const TextStyle(
             color: Color(0xFF2E384D),
             fontWeight: FontWeight.w800,
@@ -166,7 +164,7 @@ class _LessonsScreenState extends State<LessonsScreen> {
           ),
         ),
         title: Text(
-          lesson['title'] ?? '',
+          AppStrings.of(context).lessonWithTitle(lesson['title'] ?? ''),
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Color(0xFF2E384D)),
         ),
         subtitle: Text(

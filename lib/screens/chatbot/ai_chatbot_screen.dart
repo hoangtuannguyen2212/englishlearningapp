@@ -24,19 +24,22 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
   @override
   void initState() {
     super.initState();
+    _initModel();
+    _loadChatHistory();
+  }
+
+  void _initModel() {
     final String apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
     // Khởi tạo Model Gemini với hướng dẫn hệ thống
     _model = GenerativeModel(
       model: 'gemini-2.5-flash',
       apiKey: apiKey,
       systemInstruction: Content.system(
-          "Bạn là một giáo viên dạy tiếng Anh nhiệt tình. "
-              "Hãy trả lời bằng tiếng Việt nếu người dùng hỏi bằng tiếng Việt, "
-              "nhưng luôn khuyến khích họ dùng tiếng Anh. Nếu họ viết sai ngữ pháp, hãy sửa lỗi cho họ."),
+          "You are an enthusiastic English teacher. "
+          "Always encourage the user to use English. If they write in Vietnamese, respond in Vietnamese but include English translations. "
+          "Always correct their grammar mistakes politely."),
     );
     _chat = _model.startChat();
-
-    _loadChatHistory();
   }
 
   Future<void> _saveChatHistory() async {
@@ -59,7 +62,7 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
       setState(() {
         _messages.add({
           'role': 'ai',
-          'text': 'Hello! I am your English assistant. What would you like to learn today?'
+          'text': AppStrings.of(context, listen: false).chatbotGreeting
         });
       });
     }
@@ -92,17 +95,21 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
 
     try {
       final response = await _chat.sendMessage(Content.text(userText));
+      if (!mounted) return;
+      
       setState(() {
         _messages.add(
-            {'role': 'ai', 'text': response.text ?? 'I don\'t understand...'});
+            {'role': 'ai', 'text': response.text ?? AppStrings.of(context, listen: false).chatbotFallback});
       });
       _saveChatHistory();
     } catch (e) {
-      String errorMessage = 'Connection error: $e';
+      if (!mounted) return;
+
+      String errorMessage = AppStrings.of(context, listen: false).connectionError(e.toString());
       if (e.toString().contains('503')) {
-        errorMessage = 'AI system is overloaded. Please wait a moment and try again!';
+        errorMessage = AppStrings.of(context, listen: false).aiOverloaded;
       } else if (e.toString().contains('429')) {
-        errorMessage = 'Too many requests. Please wait a moment!';
+        errorMessage = AppStrings.of(context, listen: false).tooManyRequests;
       }
 
       setState(() {
@@ -119,10 +126,23 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FF),
       appBar: AppBar(
-        title: Text(AppStrings.of(context).aiAssistant,
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: Column(
+          children: [
+            Text(AppStrings.of(context).aiAssistant,
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18)),
+            const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(radius: 4, backgroundColor: Colors.greenAccent),
+                SizedBox(width: 4),
+                Text('Online', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              ],
+            ),
+          ],
+        ),
         backgroundColor: const Color(0xFF1A56F6),
         centerTitle: true,
+        elevation: 0,
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white),
@@ -157,7 +177,7 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               itemCount: _messages.length,
               itemBuilder: (context, index) {
                 var msg = _messages[index];
@@ -166,9 +186,42 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
               },
             ),
           ),
-          if (_isLoading) const LinearProgressIndicator(
-              color: Color(0xFF1A56F6)),
+          if (_isLoading) _buildLoadingIndicator(),
           _buildInputArea(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5)
+              ],
+            ),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1A56F6)),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'AI is typing...',
+                  style: TextStyle(color: Colors.grey, fontSize: 13, fontStyle: FontStyle.italic),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -283,63 +336,120 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
       _chat = _model.startChat(); // Khởi tạo lại phiên chat mới
       _messages.add({
         'role': 'ai',
-        'text': 'Xin chào! Tôi là trợ lý tiếng Anh của bạn. Bạn muốn học gì hôm nay?'
+        'text': AppStrings.of(context, listen: false).chatbotGreeting
       });
       _saveChatHistory();
     });
   }
 
   Widget _buildChatBubble(String text, bool isUser) {
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-        padding: const EdgeInsets.all(14),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-        decoration: BoxDecoration(
-          color: isUser ? const Color(0xFF1A56F6) : Colors.white,
-          borderRadius: BorderRadius.circular(16).copyWith(
-            bottomRight: isUser ? const Radius.circular(0) : const Radius.circular(16),
-            bottomLeft: isUser ? const Radius.circular(16) : const Radius.circular(0),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            )
-          ],
-        ),
-        child: isUser
-            ? Text(text, style: const TextStyle(color: Colors.white, fontSize: 16))
-            : MarkdownBody(
-                data: text,
-                styleSheet: MarkdownStyleSheet(
-                  p: const TextStyle(color: Colors.black87, fontSize: 16, height: 1.4),
-                  listBullet: const TextStyle(color: Colors.black87, fontSize: 16),
-                ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isUser)
+            Container(
+              margin: const EdgeInsets.only(right: 8, bottom: 4),
+              child: const CircleAvatar(
+                radius: 16,
+                backgroundColor: Color(0xFF1A56F6),
+                child: Icon(Icons.smart_toy_rounded, color: Colors.white, size: 18),
               ),
+            ),
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isUser ? const Color(0xFF1A56F6) : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(20),
+                  topRight: const Radius.circular(20),
+                  bottomLeft: Radius.circular(isUser ? 20 : 0),
+                  bottomRight: Radius.circular(isUser ? 0 : 20),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  )
+                ],
+              ),
+              child: isUser
+                  ? Text(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4))
+                  : MarkdownBody(
+                      data: text,
+                      styleSheet: MarkdownStyleSheet(
+                        p: const TextStyle(color: Color(0xFF2E384D), fontSize: 15, height: 1.5),
+                        listBullet: const TextStyle(color: Color(0xFF2E384D), fontSize: 15),
+                      ),
+                    ),
+            ),
+          ),
+          if (isUser)
+            Container(
+              margin: const EdgeInsets.only(left: 8, bottom: 4),
+              child: const CircleAvatar(
+                radius: 16,
+                backgroundColor: Colors.blueGrey,
+                child: Icon(Icons.person, color: Colors.white, size: 18),
+              ),
+            ),
+        ],
       ),
     );
   }
 
   Widget _buildInputArea() {
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: const BoxDecoration(color: Colors.white,
-          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)]),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -2))
+        ],
+      ),
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: _controller,
-              onSubmitted: (_) => _sendMessage(),
-              decoration: const InputDecoration(
-                  hintText: '...', border: InputBorder.none),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F7FF),
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(color: const Color(0xFFE3EDFF)),
+              ),
+              child: TextField(
+                controller: _controller,
+                onSubmitted: (_) => _sendMessage(),
+                maxLines: null,
+                decoration: const InputDecoration(
+                  hintText: 'Type a message...',
+                  hintStyle: TextStyle(color: Colors.grey, fontSize: 15),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
             ),
           ),
-          IconButton(icon: const Icon(Icons.send, color: Color(0xFF1A56F6)),
-              onPressed: _sendMessage),
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: _sendMessage,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: const BoxDecoration(
+                color: Color(0xFF1A56F6),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(color: Color(0x4D1A56F6), blurRadius: 8, offset: Offset(0, 4))
+                ],
+              ),
+              child: const Icon(Icons.send_rounded, color: Colors.white, size: 24),
+            ),
+          ),
         ],
       ),
     );
