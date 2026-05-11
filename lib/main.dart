@@ -3,10 +3,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
-import 'firebase_options.dart';
-import 'auth_screen.dart';
-import 'main_screen.dart';
-import 'locale_provider.dart';
+import 'package:englishlearningapp/data/services/firebase_options.dart';
+import 'screens/auth/auth_screen.dart';
+import 'screens/main_screen.dart';
+import 'providers/locale_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

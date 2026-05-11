@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:englishlearningapp/main.dart';
-import 'package:englishlearningapp/locale_provider.dart';
+import 'package:englishlearningapp/providers/locale_provider.dart';
 
 void main() {
   testWidgets('App loads with auth screen', (WidgetTester tester) async {
