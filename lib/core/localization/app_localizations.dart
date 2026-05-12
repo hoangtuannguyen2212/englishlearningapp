@@ -56,6 +56,17 @@ class AppStrings {
   // --- Home Screen ---
   String get search => _isEn ? 'Search' : 'Tìm kiếm';
   String noWordFound(String query) => _isEn ? "No word found: '$query'" : "Không tìm thấy từ: '$query'";
+  String get goodMorning => _isEn ? 'Good morning' : 'Chào buổi sáng';
+  String get goodAfternoon => _isEn ? 'Good afternoon' : 'Chào buổi chiều';
+  String get goodEvening => _isEn ? 'Good evening' : 'Chào buổi tối';
+  String get readyToLearn => _isEn ? 'Ready to learn?' : 'Sẵn sàng học chưa?';
+  String get letsReview => _isEn ? "Let's review some words" : 'Cùng ôn tập từ vựng nhé';
+  String get wordOfTheDay => _isEn ? 'Word of the Day' : 'Từ vựng của ngày';
+  String get dailyChallenge => _isEn ? 'Daily Challenge' : 'Thử thách hàng ngày';
+  String get continueLearning => _isEn ? 'Continue Learning' : 'Tiếp tục học';
+  String get recentWords => _isEn ? 'Recent Words' : 'Từ vựng gần đây';
+  String get streak => _isEn ? 'Streak' : 'Chuỗi';
+  String get coins => _isEn ? 'Coins' : 'Xu';
 
   // --- Flashcard ---
   String get tapToSeeExamples => _isEn ? 'Tap to see examples' : 'Chạm để xem ví dụ';

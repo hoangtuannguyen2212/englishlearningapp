@@ -164,7 +164,7 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A56F6).withOpacity(0.1),
+              color: const Color(0xFF1A56F6).withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.volume_up_rounded, color: Color(0xFF1A56F6), size: 20),
@@ -219,7 +219,7 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
                     margin: const EdgeInsets.only(top: 2),
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF5722).withOpacity(0.15),
+                      color: const Color(0xFFFF5722).withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.volume_up_rounded, color: Color(0xFFFF5722), size: 16),
@@ -259,7 +259,7 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
                                 margin: const EdgeInsets.only(top: 2),
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1A56F6).withOpacity(0.1),
+                                  color: const Color(0xFF1A56F6).withValues(alpha: 0.1),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(Icons.volume_up_rounded, color: Color(0xFF1A56F6), size: 16),
@@ -278,10 +278,10 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
 
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
-      color: Colors.white.withOpacity(0.95),
+      color: Colors.white.withValues(alpha: 0.95),
       borderRadius: BorderRadius.circular(30),
       boxShadow: [
-        BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 30, offset: const Offset(0, 15)),
+        BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 30, offset: const Offset(0, 15)),
       ],
     );
   }

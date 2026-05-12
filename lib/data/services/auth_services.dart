@@ -32,8 +32,12 @@ class AuthService {
         'username': username,
         'email': email,
         'totalXp': 0,
+        'level': 1,
         'streak': 0,
+        'coins': 0,
         'badges': [],
+        'lastStudyDate': null,
+        'dailyGoalXp': 100,
         'createdAt': FieldValue.serverTimestamp(),
       });
 

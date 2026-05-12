@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../widgets/flashcard_widget.dart';
+import 'quiz_screen.dart';
 
 class LessonDetailScreen extends StatefulWidget {
   final Map<String, dynamic> lesson;
@@ -57,13 +58,58 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   }
 
   void _goToNext() {
-    _flashcardKey.currentState?.stopAudio();
-    _flashcardKey.currentState?.resetFlip();
     if (_currentIndex < _words.length - 1) {
+      _flashcardKey.currentState?.stopAudio();
+      _flashcardKey.currentState?.resetFlip();
       setState(() => _currentIndex++);
     } else {
-      setState(() => _currentIndex = 0);
+      _showQuizPrompt();
     }
+  }
+
+  void _showQuizPrompt() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(AppStrings.of(context).wellDone, textAlign: TextAlign.center),
+        content: const Text(
+          "You've reviewed all words. Ready for a quick quiz to earn XP?",
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _flashcardKey.currentState?.stopAudio();
+              _flashcardKey.currentState?.resetFlip();
+              setState(() => _currentIndex = 0);
+            },
+            child: const Text("Review Again"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => QuizScreen(
+                    words: _words,
+                    lessonTitle: widget.lesson['title'] ?? '',
+                  ),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1A56F6),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text("Take Quiz"),
+          ),
+        ],
+      ),
+    );
   }
 
   void _goToPrev() {
