@@ -46,6 +46,16 @@ class EditProfileScreen extends StatelessWidget {
                         title: AppStrings.of(context).changePassword,
                         onTap: () => _showChangePasswordSheet(context),
                       ),
+
+                      const SizedBox(height: 16),
+
+                      _buildActionTile(
+                        icon: Icons.delete_forever_outlined,
+                        title: AppStrings.of(context).deleteAccount,
+                        iconColor: Colors.redAccent,
+                        titleColor: Colors.redAccent,
+                        onTap: () => _showDeleteAccountSheet(context),
+                      ),
                     ],
                   ),
                 ),
@@ -89,7 +99,12 @@ class EditProfileScreen extends StatelessWidget {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    Color? iconColor,
+    Color? titleColor,
   }) {
+    final Color resolvedIconColor = iconColor ?? Colors.black87;
+    final Color resolvedTitleColor = titleColor ?? Colors.black87;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -114,15 +129,15 @@ class EditProfileScreen extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(icon, color: Colors.black87, size: 24),
+                Icon(icon, color: resolvedIconColor, size: 24),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: Colors.black87,
+                      color: resolvedTitleColor,
                     ),
                   ),
                 ),
@@ -498,6 +513,127 @@ class EditProfileScreen extends StatelessWidget {
         );
       },
     );
+  }
+
+  void _showDeleteAccountSheet(BuildContext context) {
+    final passwordController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        bool obscurePassword = true;
+        bool isLoading = false;
+
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return _bottomSheetContainer(
+              context: context,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildSheetIndicator(),
+                  const SizedBox(height: 16),
+                  Text(
+                    AppStrings.of(context).deleteAccountConfirm,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.redAccent,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    AppStrings.of(context).deleteAccountDesc,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade700,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildTextField(
+                    hintText: AppStrings.of(context).typePasswordToConfirm,
+                    controller: passwordController,
+                    isPassword: true,
+                    obscureText: obscurePassword,
+                    onToggleVisibility: () =>
+                        setState(() => obscurePassword = !obscurePassword),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: isLoading
+                          ? null
+                          : () async {
+                              final password = passwordController.text;
+                              if (password.isEmpty) {
+                                _showErrorSnackBar(
+                                  context,
+                                  AppStrings.of(context).pleaseEnterPassword,
+                                );
+                                return;
+                              }
+
+                              FocusScope.of(context).unfocus();
+                              setState(() => isLoading = true);
+
+                              final result = await AuthService().deleteAccount(
+                                currentPassword: password,
+                              );
+
+                              if (!context.mounted) return;
+                              setState(() => isLoading = false);
+
+                              if (result == 'Successful') {
+                                Navigator.pop(context);
+                                _showSuccessSnackBar(
+                                  context,
+                                  AppStrings.of(context).accountDeleted,
+                                );
+                              } else {
+                                _showErrorSnackBar(context, result);
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: isLoading
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : Text(
+                              AppStrings.of(context).deleteAccountAction,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(passwordController.dispose);
   }
 
   // --- CÁC WIDGET DÙNG CHUNG CHO BOTTOM SHEET ---

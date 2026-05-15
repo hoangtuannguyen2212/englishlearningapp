@@ -119,17 +119,25 @@ class SRSService {
         });
   }
 
-  Stream<int> getDueCountStream() {
+  Stream<int> getDueCountStream() => getDueProgressStream().map((list) => list.length);
+
+  /// Từ có [nextReview] đến hạn (<= thời điểm hiện tại).
+  Stream<List<WordProgress>> getDueProgressStream() {
     final user = _auth.currentUser;
-    if (user == null) return Stream.value(0);
+    if (user == null) return Stream.value([]);
 
     return _firestore
         .collection('users')
         .doc(user.uid)
         .collection('user_progress')
         .where('nextReview', isLessThanOrEqualTo: DateTime.now())
+        .orderBy('nextReview')
         .snapshots()
-        .map((snapshot) => snapshot.docs.length);
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) => WordProgress.fromFirestore(doc.data()))
+              .toList();
+        });
   }
 
   /// Thời điểm ôn sớm nhất trong [user_progress].

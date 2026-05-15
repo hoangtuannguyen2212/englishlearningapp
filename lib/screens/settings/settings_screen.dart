@@ -84,22 +84,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 onChanged: _onNotificationChanged,
                               ),
                       ),
-                      if (_isNotificationOn == true) ...[
-                        const SizedBox(height: 16),
-                        _buildSettingTile(
-                          icon: Icons.notifications_active_outlined,
-                          title: s.testNotificationNow,
-                          trailing: const Icon(Icons.chevron_right, color: Colors.black38),
-                          onTap: () => _runNotificationTest(immediate: true),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildSettingTile(
-                          icon: Icons.timer_outlined,
-                          title: s.testNotification10s,
-                          trailing: const Icon(Icons.chevron_right, color: Colors.black38),
-                          onTap: () => _runNotificationTest(immediate: false),
-                        ),
-                      ],
                       const SizedBox(height: 16),
                       _buildSettingTile(
                         icon: Icons.dark_mode_outlined,
@@ -121,23 +105,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Future<void> _runNotificationTest({required bool immediate}) async {
-    final s = AppStrings.of(context, listen: false);
-    final ok = immediate
-        ? await NotificationService().showTestNotificationNow()
-        : await NotificationService().scheduleTestNotification(seconds: 10);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          ok
-              ? (immediate ? s.testNotificationSent : s.testNotificationScheduled)
-              : s.testNotificationFailed,
-        ),
       ),
     );
   }

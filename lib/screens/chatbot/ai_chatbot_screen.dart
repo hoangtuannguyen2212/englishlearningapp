@@ -1,9 +1,13 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+
 import '../../core/localization/app_localizations.dart';
 
 class AIChatbotScreen extends StatefulWidget {
@@ -14,6 +18,8 @@ class AIChatbotScreen extends StatefulWidget {
 }
 
 class _AIChatbotScreenState extends State<AIChatbotScreen> {
+  static const String _legacyHistoryKey = 'chat_history';
+
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, String>> _messages = [];
@@ -21,16 +27,34 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
   late ChatSession _chat;
   bool _isLoading = false;
 
+  String? _currentUid;
+  StreamSubscription<User?>? _authSub;
+
   @override
   void initState() {
     super.initState();
     _initModel();
-    _loadChatHistory();
+    _currentUid = FirebaseAuth.instance.currentUser?.uid;
+    _loadChatHistoryForCurrentUser();
+
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
+      final newUid = user?.uid;
+      if (newUid == _currentUid) return;
+      _currentUid = newUid;
+      _resetForNewUser();
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _initModel() {
     final String apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
-    // Khởi tạo Model Gemini với hướng dẫn hệ thống
     _model = GenerativeModel(
       model: 'gemini-2.5-flash',
       apiKey: apiKey,
@@ -42,30 +66,61 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
     _chat = _model.startChat();
   }
 
-  Future<void> _saveChatHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('chat_history', jsonEncode(_messages));
+  String _historyKeyFor(String? uid) =>
+      uid == null || uid.isEmpty ? 'chat_history_anonymous' : 'chat_history_$uid';
+
+  void _resetForNewUser() {
+    if (!mounted) return;
+    setState(() {
+      _messages.clear();
+      _chat = _model.startChat();
+      _isLoading = false;
+    });
+    _loadChatHistoryForCurrentUser();
   }
 
-  Future<void> _loadChatHistory() async {
+  Future<void> _saveChatHistory() async {
     final prefs = await SharedPreferences.getInstance();
-    final String? savedHistory = prefs.getString('chat_history');
+    await prefs.setString(_historyKeyFor(_currentUid), jsonEncode(_messages));
+  }
 
-    if (savedHistory != null) {
-      setState(() {
-        _messages.clear();
-        final List<dynamic> decoded = jsonDecode(savedHistory);
-        _messages.addAll(decoded.map((item) => Map<String, String>.from(item)).toList());
-      });
-      _scrollToBottom();
-    } else {
-      setState(() {
-        _messages.add({
-          'role': 'ai',
-          'text': AppStrings.of(context, listen: false).chatbotGreeting
-        });
-      });
+  Future<void> _loadChatHistoryForCurrentUser() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Xóa key chung cũ để không lẫn dữ liệu giữa các tài khoản.
+    if (prefs.containsKey(_legacyHistoryKey)) {
+      await prefs.remove(_legacyHistoryKey);
     }
+
+    final String? savedHistory = prefs.getString(_historyKeyFor(_currentUid));
+
+    if (!mounted) return;
+
+    if (savedHistory != null && savedHistory.isNotEmpty) {
+      try {
+        final List<dynamic> decoded = jsonDecode(savedHistory);
+        setState(() {
+          _messages
+            ..clear()
+            ..addAll(
+              decoded.map((item) => Map<String, String>.from(item as Map)),
+            );
+        });
+        _scrollToBottom();
+        return;
+      } catch (_) {
+        await prefs.remove(_historyKeyFor(_currentUid));
+      }
+    }
+
+    setState(() {
+      _messages
+        ..clear()
+        ..add({
+          'role': 'ai',
+          'text': AppStrings.of(context, listen: false).chatbotGreeting,
+        });
+    });
   }
 
   void _scrollToBottom() {
@@ -128,8 +183,14 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
       appBar: AppBar(
         title: Column(
           children: [
-            Text(AppStrings.of(context).aiAssistant,
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18)),
+            Text(
+              AppStrings.diamondAiBrandName,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 18,
+              ),
+            ),
             const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -187,7 +248,7 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
             ),
           ),
           if (_isLoading) _buildLoadingIndicator(),
-          _buildInputArea(),
+          _buildInputArea(context),
         ],
       ),
     );
@@ -215,9 +276,13 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1A56F6)),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'AI is typing...',
-                  style: TextStyle(color: Colors.grey, fontSize: 13, fontStyle: FontStyle.italic),
+                Text(
+                  AppStrings.of(context).chatbotTyping,
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ],
             ),
@@ -402,9 +467,13 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
     );
   }
 
-  Widget _buildInputArea() {
+  Widget _buildInputArea(BuildContext context) {
+    // Bottom nav nổi của MainScreen che ~80px cuối — cộng thêm safe area trên máy có gesture bar.
+    final double bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+    final double bottomPadding = 16 + 80 + bottomInset;
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPadding),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),

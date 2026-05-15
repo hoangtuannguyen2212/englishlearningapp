@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'lessons_screen.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../providers/locale_provider.dart';
+import '../../widgets/app_screen_background.dart';
 
 class CoursesScreen extends StatefulWidget {
   const CoursesScreen({super.key});
@@ -148,18 +149,14 @@ class _CoursesScreenState extends State<CoursesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/bg.jpg'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          const AppScreenBackground(),
+          SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
                 child: Text(
@@ -201,9 +198,10 @@ class _CoursesScreenState extends State<CoursesScreen> {
                         },
                       ),
               ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

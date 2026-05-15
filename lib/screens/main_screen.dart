@@ -48,6 +48,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   void _onItemTapped(int index) {
     if (_selectedIndex == index) return;
+    setState(() => _selectedIndex = index);
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 280),
@@ -66,64 +67,174 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FF),
-
+      extendBody: true,
       body: PageView(
         controller: _pageController,
         onPageChanged: _onPageChanged,
         physics: const PageScrollPhysics(),
         children: _pages,
       ),
+      bottomNavigationBar: Material(
+        color: Colors.transparent,
+        elevation: 0,
+        child: _AppBottomNavBar(
+          selectedIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          labels: [
+            s.home,
+            s.courses,
+            s.aiChatbot,
+            s.me,
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-      bottomNavigationBar: Container(
+class _AppBottomNavBar extends StatelessWidget {
+  const _AppBottomNavBar({
+    required this.selectedIndex,
+    required this.onTap,
+    required this.labels,
+  });
+
+  static const Color _primary = Color(0xFF1A56F6);
+  static const Color _inactive = Color(0xFF94A3B8);
+  static const double _barHeight = 66;
+  static const double _pillInset = 5;
+
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+  final List<String> labels;
+
+  static const List<IconData> _icons = [
+    Icons.home_rounded,
+    Icons.menu_book_rounded,
+    Icons.diamond_rounded,
+    Icons.person_rounded,
+  ];
+
+  /// Chỉ khung bo tròn trắng nổi — vùng ngoài trong suốt (nhìn xuyên ra nội dung tab).
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 0, 20, bottomInset > 0 ? bottomInset + 8 : 12),
+      child: DecoratedBox(
         decoration: BoxDecoration(
           color: Colors.white,
+          borderRadius: BorderRadius.circular(34),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
+              color: _primary.withValues(alpha: 0.12),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: BottomNavigationBar(
-          items: <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.home_outlined),
-              activeIcon: const Icon(Icons.home),
-              label: s.home,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(34),
+          child: SizedBox(
+            height: _barHeight,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final tabWidth = constraints.maxWidth / labels.length;
+                final pillWidth = tabWidth - _pillInset * 2;
+
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                      left: _pillInset + selectedIndex * tabWidth,
+                      width: pillWidth,
+                      top: _pillInset,
+                      bottom: _pillInset,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF5B7CFA), Color(0xFF1A56F6)],
+                          ),
+                          borderRadius: BorderRadius.circular(26),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _primary.withValues(alpha: 0.35),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: List.generate(labels.length, (index) {
+                        final selected = selectedIndex == index;
+                        return Expanded(
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(26),
+                              onTap: () => onTap(index),
+                              child: SizedBox(
+                                height: _barHeight,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    AnimatedScale(
+                                      scale: selected ? 1.06 : 1,
+                                      duration:
+                                          const Duration(milliseconds: 220),
+                                      curve: Curves.easeOutCubic,
+                                      child: Icon(
+                                        _icons[index],
+                                        size: 24,
+                                        color:
+                                            selected ? Colors.white : _inactive,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    SizedBox(
+                                      height: 13,
+                                      child: AnimatedOpacity(
+                                        opacity: selected ? 1 : 0,
+                                        duration: const Duration(
+                                          milliseconds: 180,
+                                        ),
+                                        child: Text(
+                                          labels[index],
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                            height: 1.1,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
+                );
+              },
             ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.menu_book_outlined),
-              activeIcon: const Icon(Icons.menu_book),
-              label: s.courses,
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.forum_outlined),
-              activeIcon: const Icon(Icons.forum),
-              label: s.aiChatbot,
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.person_outline),
-              activeIcon: const Icon(Icons.person),
-              label: s.me,
-            ),
-          ],
-          currentIndex: _selectedIndex,
-          selectedItemColor: const Color(0xFF2B3FD4),
-          unselectedItemColor: const Color(0xFF6B7280),
-          onTap: _onItemTapped,
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          elevation: 0,
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 12,
           ),
         ),
       ),

@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../courses/flashcard_screen.dart';
+import 'review_words_screen.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../data/models/user_progress_model.dart';
 import '../../data/services/srs_service.dart';
 import '../../data/services/gamification_service.dart';
+import '../../widgets/app_screen_background.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,20 +27,38 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   final SRSService _srsService = SRSService();
   final GamificationService _gamificationService = GamificationService();
+  String? _activeUid;
+  StreamSubscription<User?>? _authSub;
 
   @override
   void initState() {
     super.initState();
+    _activeUid = FirebaseAuth.instance.currentUser?.uid;
     _fetchVocabularyFromFirebase();
     _gamificationService.updateStreak();
+    _searchFocusNode.addListener(() => setState(() {}));
+    _authSub = FirebaseAuth.instance.userChanges().listen(_onUserChanged);
+  }
 
-    _searchFocusNode.addListener(() {
-      setState(() {});
-    });
+  void _onUserChanged(User? user) {
+    final uid = user?.uid;
+    if (uid == _activeUid) return;
+    _activeUid = uid;
+
+    _searchController.clear();
+    _searchFocusNode.unfocus();
+    _searchQuery = '';
+
+    if (uid != null) {
+      _gamificationService.updateStreak();
+    }
+
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _authSub?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -43,27 +66,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchVocabularyFromFirebase() async {
     try {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('vocabularies')
-          .get();
+      final snapshot =
+          await FirebaseFirestore.instance.collection('vocabularies').get();
 
-      List<Map<String, dynamic>> loadedWords = snapshot.docs.map((doc) {
-        var data = doc.data() as Map<String, dynamic>;
+      final loadedWords = snapshot.docs.map((doc) {
+        final data = doc.data();
         data['id'] = doc.id;
         return data;
       }).toList();
 
-      loadedWords.sort((a, b) => (a['word'] ?? '').toString().compareTo((b['word'] ?? '').toString()));
+      loadedWords.sort(
+        (a, b) =>
+            (a['word'] ?? '').toString().compareTo((b['word'] ?? '').toString()),
+      );
 
       setState(() {
         _vocabularyDatabase = loadedWords;
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint("Lỗi tải từ vựng: $e");
-      setState(() {
-        _isLoading = false;
-      });
+      debugPrint('Lỗi tải từ vựng: $e');
+      setState(() => _isLoading = false);
     }
   }
 
@@ -83,81 +106,121 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _getShortType(String? type) {
-    if (type == null || type.isEmpty) return "";
+    if (type == null || type.isEmpty) return '';
     switch (type.toLowerCase()) {
-      case 'noun': return ' (n)';
-      case 'verb': return ' (v)';
-      case 'adjective': return ' (adj)';
-      case 'adverb': return ' (adv)';
-      default: return ' ($type)';
+      case 'noun':
+        return ' (n)';
+      case 'verb':
+        return ' (v)';
+      case 'adjective':
+        return ' (adj)';
+      case 'adverb':
+        return ' (adv)';
+      default:
+        return ' ($type)';
     }
+  }
+
+  Map<String, dynamic>? _vocabById(String wordId) {
+    for (final item in _vocabularyDatabase) {
+      if (item['id'] == wordId) return item;
+    }
+    return null;
+  }
+
+  List<Map<String, dynamic>> _dueVocabularyList(List<WordProgress> dueProgress) {
+    final List<Map<String, dynamic>> words = [];
+    for (final progress in dueProgress) {
+      final vocab = _vocabById(progress.wordId);
+      if (vocab != null) words.add(vocab);
+    }
+    return words;
+  }
+
+  void _openReviewSession(List<Map<String, dynamic>> words) {
+    if (words.isEmpty) return;
+    FocusScope.of(context).unfocus();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ReviewWordsScreen(words: words),
+      ),
+    );
+  }
+
+  void _openFlashcard(Map<String, dynamic> wordData) {
+    FocusScope.of(context).unfocus();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FlashcardScreen(wordData: wordData),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    
-    return StreamBuilder<DocumentSnapshot>(
-      stream: user != null 
-          ? FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots()
-          : null,
-      builder: (context, snapshot) {
-        final userData = snapshot.data?.data() as Map<String, dynamic>?;
-        final String displayName = userData?['username'] ?? user?.displayName ?? "Learner";
-        final int streak = userData?['streak'] ?? 0;
-        final int coins = userData?['coins'] ?? 0;
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.userChanges(),
+      builder: (context, authSnapshot) {
+        final user = authSnapshot.data;
 
-        List<Map<String, dynamic>> filteredWords = _vocabularyDatabase
-            .where((item) => (item['word'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase()))
-            .toList();
+        return StreamBuilder<DocumentSnapshot>(
+          stream: user != null
+              ? FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .snapshots()
+              : null,
+          builder: (context, snapshot) {
+            final userData = snapshot.data?.data() as Map<String, dynamic>?;
+            final String displayName =
+                userData?['username'] ?? user?.displayName ?? 'Learner';
+            final int streak = userData?['streak'] ?? 0;
+            final int coins = userData?['coins'] ?? 0;
 
-        bool isSearching = _searchFocusNode.hasFocus || _searchQuery.isNotEmpty;
+            final filteredWords = _vocabularyDatabase
+                .where(
+                  (item) => (item['word'] ?? '')
+                      .toString()
+                      .toLowerCase()
+                      .contains(_searchQuery.toLowerCase()),
+                )
+                .toList();
 
-        return Scaffold(
-          backgroundColor: Colors.white,
-          body: Stack(
-            children: [
-              _buildBackgroundGradient(),
-              SafeArea(
-                child: Column(
-                  children: [
-                    _buildHeader(context, displayName, streak, coins),
-                    _buildSearchBox(context),
-                    Expanded(
-                      child: isSearching 
-                          ? _buildSearchResults(context, filteredWords)
-                          : _buildDashboard(context),
+            final isSearching =
+                _searchFocusNode.hasFocus || _searchQuery.isNotEmpty;
+
+            return Scaffold(
+              backgroundColor: Colors.white,
+              body: Stack(
+                children: [
+                  const AppScreenBackground(),
+                  SafeArea(
+                    child: Column(
+                      children: [
+                        _buildHeader(context, displayName, streak, coins),
+                        _buildSearchBar(context),
+                        Expanded(
+                          child: isSearching
+                              ? _buildSearchResults(context, filteredWords)
+                              : _buildReviewSection(context),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildBackgroundGradient() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFE3F2FD),
-            Color(0xFFF3F8FF),
-            Colors.white,
-          ],
-          stops: [0.0, 0.4, 1.0],
-        ),
-      ),
-    );
-  }
-
   Widget _buildHeader(BuildContext context, String name, int streak, int coins) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
       child: Row(
         children: [
           Expanded(
@@ -182,44 +245,99 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          _buildStatIcon(Icons.local_fire_department, "$streak", Colors.orange),
-          const SizedBox(width: 16),
-          _buildStatIcon(Icons.diamond, "$coins", Colors.blueAccent),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _buildStatBadge(
+                icon: Icons.local_fire_department_rounded,
+                value: '$streak',
+                gradient: const [Color(0xFFFFB300), Color(0xFFFF6D00)],
+                glow: const Color(0xFFFF6D00),
+              ),
+              const SizedBox(height: 8),
+              _buildStatBadge(
+                icon: Icons.diamond_rounded,
+                value: '$coins',
+                gradient: const [Color(0xFF42A5F5), Color(0xFF1A56F6)],
+                glow: const Color(0xFF1A56F6),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatIcon(IconData icon, String value, Color color) {
-    return Row(
-      children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(width: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF2E384D),
-          ),
+  Widget _buildStatBadge({
+    required IconData icon,
+    required String value,
+    required List<Color> gradient,
+    required Color glow,
+  }) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: gradient,
         ),
-      ],
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: glow.withValues(alpha: 0.4),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(width: 5),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                height: 1,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildSearchBox(BuildContext context) {
-    bool isSearching = _searchFocusNode.hasFocus || _searchQuery.isNotEmpty;
+  Widget _buildSearchBar(BuildContext context) {
+    final s = AppStrings.of(context);
+    final isFocused = _searchFocusNode.hasFocus;
+    final isSearching = isFocused || _searchQuery.isNotEmpty;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white.withValues(alpha: 0.96),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: isFocused
+                ? const Color(0xFF1A56F6)
+                : Colors.white.withValues(alpha: 0.8),
+            width: isFocused ? 2 : 1.5,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
+              color: isFocused
+                  ? const Color(0xFF1A56F6).withValues(alpha: 0.18)
+                  : Colors.black.withValues(alpha: 0.08),
+              blurRadius: isFocused ? 16 : 12,
               offset: const Offset(0, 4),
             ),
           ],
@@ -228,22 +346,41 @@ class _HomeScreenState extends State<HomeScreen> {
           controller: _searchController,
           focusNode: _searchFocusNode,
           onChanged: (value) => setState(() => _searchQuery = value),
+          style: const TextStyle(
+            fontSize: 16,
+            color: Color(0xFF2E384D),
+            fontWeight: FontWeight.w500,
+          ),
           decoration: InputDecoration(
-            hintText: AppStrings.of(context).search,
-            hintStyle: const TextStyle(color: Colors.black38),
+            hintText: s.searchHint,
+            hintStyle: TextStyle(
+              color: Colors.black.withValues(alpha: 0.38),
+              fontWeight: FontWeight.w400,
+            ),
             prefixIcon: isSearching
                 ? IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Color(0xFF2962FF)),
+                    icon: const Icon(Icons.arrow_back_rounded, size: 22),
+                    color: const Color(0xFF1A56F6),
                     onPressed: () {
                       _searchFocusNode.unfocus();
                       _searchController.clear();
                       setState(() => _searchQuery = '');
                     },
                   )
-                : const Icon(Icons.search, color: Color(0xFF2962FF)),
+                : const Padding(
+                    padding: EdgeInsets.only(left: 4),
+                    child: Icon(
+                      Icons.search_rounded,
+                      color: Color(0xFF1A56F6),
+                      size: 26,
+                    ),
+                  ),
             suffixIcon: _searchQuery.isNotEmpty
                 ? IconButton(
-                    icon: const Icon(Icons.clear, color: Colors.grey),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: Colors.black.withValues(alpha: 0.45),
+                    ),
                     onPressed: () {
                       _searchController.clear();
                       setState(() => _searchQuery = '');
@@ -251,126 +388,216 @@ class _HomeScreenState extends State<HomeScreen> {
                   )
                 : null,
             border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(vertical: 15),
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 14),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildDashboard(BuildContext context) {
-    final strings = AppStrings.of(context);
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      children: [
-        const SizedBox(height: 10),
-        _buildDashboardCard(
-          title: strings.wordOfTheDay,
-          content: _vocabularyDatabase.isNotEmpty 
-              ? _vocabularyDatabase[DateTime.now().day % _vocabularyDatabase.length]['word'] 
-              : "Inspire",
-          icon: Icons.lightbulb_outline,
-          color: Colors.orangeAccent,
-          onTap: () {
-            if (_vocabularyDatabase.isNotEmpty) {
-              _openFlashcard(_vocabularyDatabase[DateTime.now().day % _vocabularyDatabase.length]);
-            }
-          },
-        ),
-        const SizedBox(height: 16),
-        StreamBuilder<int>(
-          stream: _srsService.getDueCountStream(),
-          builder: (context, snapshot) {
-            final dueCount = snapshot.data ?? 0;
-            return _buildDashboardCard(
-              title: strings.dailyChallenge,
-              content: dueCount > 0 
-                  ? (AppStrings.of(context, listen: false).isEnglish 
-                      ? "$dueCount words to review" 
-                      : "Cần ôn tập $dueCount từ")
-                  : strings.letsReview,
-              icon: Icons.star_outline,
-              color: Colors.purpleAccent,
-              onTap: () {
-                // Placeholder for challenge
-              },
-            );
-          }
-        ),
-        const SizedBox(height: 16),
-        _buildDashboardCard(
-          title: strings.continueLearning,
-          content: "Travel & Food",
-          icon: Icons.play_circle_outline,
-          color: Colors.greenAccent,
-          onTap: () {
-            // Placeholder for continue
-          },
-        ),
-      ],
+  Widget _buildReviewSection(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    return StreamBuilder<List<WordProgress>>(
+      key: ValueKey('due_progress_$uid'),
+      stream: _srsService.getDueProgressStream(),
+      builder: (context, snapshot) {
+        final dueProgress = snapshot.data ?? [];
+        final dueWords = _dueVocabularyList(dueProgress);
+        final dueCount = dueWords.length;
+
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          children: [
+            _buildReviewHeroCard(
+              context,
+              dueCount: dueCount,
+              onStart: dueCount > 0 ? () => _openReviewSession(dueWords) : null,
+            ),
+            if (dueCount > 0) ...[
+              const SizedBox(height: 20),
+              ...dueWords.map(
+                (word) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _buildDueWordTile(context, word),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildDashboardCard({
-    required String title,
-    required String content,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
+  Widget _buildReviewHeroCard(
+    BuildContext context, {
+    required int dueCount,
+    required VoidCallback? onStart,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-          border: Border.all(color: color.withValues(alpha: 0.2)),
+    final s = AppStrings.of(context);
+    final bool hasDue = dueCount > 0;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: hasDue
+              ? const [Color(0xFF5C6BC0), Color(0xFF1A56F6)]
+              : const [Color(0xFF90A4AE), Color(0xFF78909C)],
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1A56F6).withValues(alpha: hasDue ? 0.35 : 0.15),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.auto_stories_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
-              child: Icon(icon, color: color, size: 30),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.reviewWords,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      s.reviewWordsSubtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            hasDue ? s.wordsDueToday(dueCount) : s.noWordsDueToday,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
             ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: color.withValues(alpha: 0.8),
-                    ),
+          ),
+          if (hasDue) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onStart,
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF1A56F6),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    content,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2E384D),
-                    ),
+                ),
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: Text(
+                  s.startReview,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                   ),
-                ],
+                ),
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black26),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDueWordTile(BuildContext context, Map<String, dynamic> wordData) {
+    final String word = wordData['word'] ?? '';
+    final String type = wordData['type'] ?? '';
+
+    return Material(
+      color: Colors.white.withValues(alpha: 0.94),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _openFlashcard(wordData),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A56F6).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.schedule_rounded,
+                  color: Color(0xFF1A56F6),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: word,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF2E384D),
+                        ),
+                      ),
+                      TextSpan(
+                        text: _getShortType(type),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontStyle: FontStyle.italic,
+                          color: Colors.black.withValues(alpha: 0.45),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.black.withValues(alpha: 0.35),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -378,9 +605,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildSearchResults(BuildContext context, List<Map<String, dynamic>> results) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF1A56F6)),
+      );
     }
-    
+
     if (results.isEmpty) {
       return Center(
         child: Text(
@@ -391,52 +620,52 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       itemCount: results.length,
-      separatorBuilder: (context, index) => const Divider(height: 1),
+      separatorBuilder: (context, _) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final wordData = results[index];
-        final String word = wordData['word'] ?? "";
-        final String type = wordData['type'] ?? "";
-        
-        return ListTile(
-          contentPadding: EdgeInsets.zero,
-          title: RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: word,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2E384D),
-                  ),
-                ),
-                TextSpan(
-                  text: _getShortType(type),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontStyle: FontStyle.italic,
-                    color: Colors.black45,
-                  ),
-                ),
-              ],
+        final String word = wordData['word'] ?? '';
+        final String type = wordData['type'] ?? '';
+
+        return Material(
+          color: Colors.white.withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(14),
+          child: ListTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
             ),
+            title: RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: word,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF2E384D),
+                    ),
+                  ),
+                  TextSpan(
+                    text: _getShortType(type),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontStyle: FontStyle.italic,
+                      color: Colors.black.withValues(alpha: 0.45),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            trailing: Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 16,
+              color: Colors.black.withValues(alpha: 0.35),
+            ),
+            onTap: () => _openFlashcard(wordData),
           ),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.black26),
-          onTap: () => _openFlashcard(wordData),
         );
       },
-    );
-  }
-
-  void _openFlashcard(Map<String, dynamic> wordData) {
-    FocusScope.of(context).unfocus();
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => FlashcardScreen(wordData: wordData),
-      ),
     );
   }
 }

@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import '../../providers/locale_provider.dart';
 
 class AppStrings {
+  /// Tên thương hiệu chatbot — dùng chung tab + AppBar.
+  static const String diamondAiBrandName = 'DiamondAI';
+
   final bool _isEn;
 
   AppStrings._(this._isEn);
@@ -21,7 +24,7 @@ class AppStrings {
   // --- Navigation ---
   String get home => _isEn ? 'Home' : 'Trang chủ';
   String get courses => _isEn ? 'Courses' : 'Khóa học';
-  String get aiChatbot => _isEn ? 'AI Assistant' : 'Trợ lý ảo';
+  String get aiChatbot => diamondAiBrandName;
   String get me => _isEn ? 'Me' : 'Cá nhân';
 
   // --- Auth Screen ---
@@ -67,8 +70,28 @@ class AppStrings {
   String get dailyChallenge => _isEn ? 'Daily Challenge' : 'Thử thách hàng ngày';
   String get continueLearning => _isEn ? 'Continue Learning' : 'Tiếp tục học';
   String get recentWords => _isEn ? 'Recent Words' : 'Từ vựng gần đây';
+  String get reviewWords => _isEn ? 'Review Words' : 'Ôn từ vựng';
+  String get reviewWordsSubtitle => _isEn
+      ? 'Words due for review today'
+      : 'Các từ đến hạn ôn hôm nay';
+  String wordsDueToday(int count) => _isEn
+      ? '$count word${count == 1 ? '' : 's'} due'
+      : '$count từ cần ôn';
+  String get noWordsDueToday => _isEn
+      ? 'No words due today. Great job!'
+      : 'Không có từ cần ôn hôm nay. Tuyệt vời!';
+  String get startReview => _isEn ? 'Start review' : 'Bắt đầu ôn';
+  String reviewProgress(int current, int total) =>
+      _isEn ? '$current / $total' : '$current / $total';
+  String get searchHint => _isEn ? 'Search vocabulary...' : 'Tìm từ vựng...';
   String get streak => _isEn ? 'Streak' : 'Chuỗi';
   String get coins => _isEn ? 'Coins' : 'Xu';
+  String get level => _isEn ? 'Level' : 'Cấp độ';
+  String levelShort(int lv) => _isEn ? 'Lv.$lv' : 'Cấp $lv';
+  String xpProgress(int current, int needed) =>
+      _isEn ? '$current / $needed XP' : '$current / $needed XP';
+  String get xpToNextLevel =>
+      _isEn ? 'XP to next level' : 'XP lên cấp tiếp';
 
   // --- Flashcard ---
   String get tapToSeeExamples => _isEn ? 'Tap to see examples' : 'Chạm để xem ví dụ';
@@ -149,11 +172,42 @@ class AppStrings {
   String get myVocabulary => _isEn ? 'My Vocabulary' : 'Từ vựng của tôi';
   String get editProfile => _isEn ? 'Edit Profile' : 'Chỉnh sửa hồ sơ';
   String get settings => _isEn ? 'Settings' : 'Cài đặt';
+  String get rememberAccountOnLogin =>
+      _isEn ? 'Remember account' : 'Nhớ tài khoản';
+  String get savedAccounts => _isEn ? 'Saved accounts' : 'Tài khoản đã lưu';
+  String savedAccountsCount(int count) => _isEn
+      ? 'Saved accounts ($count/5)'
+      : 'Tài khoản đã lưu ($count/5)';
   String get termsOfService => _isEn ? 'Terms of Service' : 'Điều khoản dịch vụ';
   String get privacyPolicy => _isEn ? 'Privacy policy' : 'Chính sách bảo mật';
   String get logOut => _isEn ? 'Log Out' : 'Đăng xuất';
+  String get logOutConfirm => _isEn ? 'Log out?' : 'Đăng xuất?';
+  String get logOutDesc => _isEn
+      ? 'Sign in again to sync your progress.'
+      : 'Đăng nhập lại để đồng bộ tiến trình học.';
   String get defaultUser => _isEn ? 'User' : 'Người dùng';
   String get noEmail => _isEn ? 'No email set' : 'Chưa cập nhật email';
+
+  // --- Account Switcher (Profile) ---
+  String get switchAccount => _isEn ? 'Switch account' : 'Chuyển tài khoản';
+  String get switchAccountSubtitle => _isEn
+      ? 'Tap an account to sign in without a password.'
+      : 'Chạm vào tài khoản để đăng nhập không cần mật khẩu.';
+  String get currentAccountBadge => _isEn ? 'Current' : 'Hiện tại';
+  String get noOtherSavedAccounts => _isEn
+      ? 'No other remembered accounts.\nEnable "Remember account" when signing in.'
+      : 'Chưa có tài khoản nào khác được nhớ.\nHãy tích "Nhớ tài khoản" khi đăng nhập.';
+  String switchingTo(String email) =>
+      _isEn ? 'Switching to $email…' : 'Đang chuyển sang $email…';
+  String switchedTo(String email) =>
+      _isEn ? 'Signed in as $email' : 'Đã đăng nhập với $email';
+  String get switchFailed => _isEn
+      ? 'Could not switch. Please sign in with your password.'
+      : 'Không thể chuyển. Vui lòng đăng nhập bằng mật khẩu.';
+  String get switchAccountNoPassword => _isEn
+      ? 'Sign out, sign in again with "Remember account" checked to enable quick switch.'
+      : 'Hãy đăng xuất, đăng nhập lại và tích "Nhớ tài khoản" để chuyển nhanh.';
+  String get removeAccount => _isEn ? 'Remove' : 'Xoá';
 
   // --- Edit Profile Screen ---
   String get profile => _isEn ? 'Profile' : 'Hồ sơ';
@@ -180,6 +234,19 @@ class AppStrings {
   String get passwordChanged => _isEn
       ? 'Password changed successfully! Please sign in again.'
       : 'Đổi mật khẩu thành công! Vui lòng đăng nhập lại.';
+  String get deleteAccount => _isEn ? 'Delete account' : 'Xóa tài khoản';
+  String get deleteAccountConfirm =>
+      _isEn ? 'Delete account permanently?' : 'Xóa tài khoản vĩnh viễn?';
+  String get deleteAccountDesc => _isEn
+      ? 'This removes your profile, study progress, and login. You can register again with the same email.'
+      : 'Xóa hồ sơ, tiến trình học và đăng nhập. Sau đó có thể đăng ký lại bằng cùng email.';
+  String get deleteAccountAction => _isEn ? 'Delete' : 'Xóa';
+  String get accountDeleted => _isEn
+      ? 'Account deleted successfully.'
+      : 'Đã xóa tài khoản thành công.';
+  String get typePasswordToConfirm => _isEn
+      ? 'Enter your password to confirm'
+      : 'Nhập mật khẩu để xác nhận';
 
   // --- Settings Screen ---
   String get language => _isEn ? 'Language' : 'Ngôn ngữ';
@@ -190,27 +257,19 @@ class AppStrings {
   String get notificationUpdateFailed => _isEn
       ? 'Could not update notifications. Check app permissions in system settings.'
       : 'Không thể cập nhật thông báo. Hãy kiểm tra quyền trong cài đặt máy.';
-  String get testNotificationNow => _isEn ? 'Test notification now' : 'Thử thông báo ngay';
-  String get testNotification10s => _isEn ? 'Test in 10 seconds' : 'Thử sau 10 giây';
-  String get testNotificationSent => _isEn
-      ? 'Test notification sent. Pull down the notification shade.'
-      : 'Đã gửi thông báo thử. Kéo thanh thông báo xuống để xem.';
-  String get testNotificationScheduled => _isEn
-      ? 'Test scheduled in 10 seconds. Minimize the app and wait.'
-      : 'Đã hẹn thử sau 10 giây. Thu nhỏ app và đợi.';
-  String get testNotificationFailed => _isEn
-      ? 'Could not send test notification.'
-      : 'Không gửi được thông báo thử.';
   String get darkMode => _isEn ? 'Dark Mode' : 'Chế độ tối';
   String get selectLanguage => _isEn ? 'Select Language' : 'Chọn ngôn ngữ';
   String get english => _isEn ? 'English' : 'English';
   String get vietnamese => _isEn ? 'Vietnamese' : 'Tiếng Việt';
 
   // --- AI Chatbot ---
-  String get aiAssistant => _isEn ? 'AI Assistant' : 'Trợ lý AI';
+  String get aiAssistant => diamondAiBrandName;
   String get chatbotGreeting => _isEn
-      ? 'Hello! I am your English assistant. What would you like to learn today?'
-      : 'Xin chào! Tôi là trợ lý tiếng Anh của bạn. Bạn muốn học gì hôm nay?';
+      ? 'Hello! I am $diamondAiBrandName, your English learning companion. What would you like to learn today?'
+      : 'Xin chào! Tôi là $diamondAiBrandName, trợ lý học tiếng Anh của bạn. Bạn muốn học gì hôm nay?';
+  String get chatbotTyping => _isEn
+      ? '$diamondAiBrandName is typing...'
+      : '$diamondAiBrandName đang nhập...';
   String get chatbotFallback => _isEn ? "I don't understand..." : 'Tôi không hiểu ý bạn...';
   String connectionError(String e) => _isEn ? 'Connection error: $e' : 'Lỗi kết nối: $e';
   String get aiOverloaded => _isEn

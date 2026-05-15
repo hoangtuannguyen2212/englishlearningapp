@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:englishlearningapp/data/services/auth_services.dart';
-import 'package:englishlearningapp/screens/main_screen.dart';
+import 'package:englishlearningapp/data/services/remember_account_service.dart';
+import 'package:englishlearningapp/core/localization/app_localizations.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -18,51 +20,140 @@ class _AuthScreenState extends State<AuthScreen> {
   bool isLogin = true;
   bool isLoading = false;
   bool isPasswordVisible = false;
+  bool _rememberAccount = false;
+  List<RememberedAccount> _savedAccounts = [];
+
+  final RememberAccountService _rememberAccountService = RememberAccountService();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reloadSavedAccounts(fillMostRecent: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _usernameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _reloadSavedAccounts({bool fillMostRecent = false}) async {
+    if (!isLogin) return;
+
+    final accounts = await _rememberAccountService.loadAll();
+    if (!mounted) return;
+
+    setState(() => _savedAccounts = accounts);
+
+    if (fillMostRecent && accounts.isNotEmpty && _emailController.text.isEmpty) {
+      _applySavedAccount(accounts.first, markRemember: true);
+    }
+  }
+
+  void _applySavedAccount(RememberedAccount account, {bool markRemember = true}) {
+    _emailController.value = TextEditingValue(
+      text: account.email,
+      selection: TextSelection.collapsed(offset: account.email.length),
+    );
+    if (markRemember) {
+      setState(() => _rememberAccount = true);
+    }
+  }
+
+  Future<void> _removeSavedAccount(RememberedAccount account) async {
+    await _rememberAccountService.remove(account.email);
+    if (!mounted) return;
+
+    final isCurrent = _emailController.text.trim().toLowerCase() ==
+        account.email.trim().toLowerCase();
+    if (isCurrent) {
+      _emailController.clear();
+    }
+
+    await _reloadSavedAccounts();
+    if (!mounted) return;
+
+    if (_savedAccounts.isEmpty) {
+      setState(() => _rememberAccount = false);
+    }
+  }
+
+  /// Lưu tài khoản — gọi ngay sau login thành công, không phụ thuộc widget còn mounted.
+  Future<void> _persistRememberAccount({
+    required bool remember,
+    required String email,
+    required String password,
+  }) async {
+    if (!remember || email.trim().isEmpty) return;
+
+    await _rememberAccountService.save(
+      email: email.trim(),
+      displayName: FirebaseAuth.instance.currentUser?.displayName,
+      password: password,
+    );
+  }
 
   // ==========================================
   // HÀM XỬ LÝ ĐĂNG NHẬP / ĐĂNG KÝ
   // ==========================================
   void _submitAuth() async {
     FocusScope.of(context).unfocus();
+
+    // Chụp trạng thái trước khi await — sau login MainScreen thay AuthScreen ngay.
+    final bool shouldRemember = isLogin && _rememberAccount;
+    final String email = _emailController.text.trim();
+    final String password = _passwordController.text.trim();
+
     setState(() => isLoading = true);
 
     String result;
     if (isLogin) {
       result = await _authService.loginUser(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+        email: email,
+        password: password,
       );
     } else {
       result = await _authService.registerUser(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+        email: email,
+        password: password,
         username: _usernameController.text.trim(),
       );
     }
 
-    setState(() => isLoading = false);
-
-    if (!mounted) return;
-
     if (result == "Successful") {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isLogin ? '✅ Sign in successful!' : '✅ Sign up successful!',
-          ),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      // Lưu TRƯỚC setState — tránh dispose AuthScreen làm gián đoạn luồng lưu.
+      if (shouldRemember) {
+        await _persistRememberAccount(
+          remember: true,
+          email: email,
+          password: password,
+        );
+      }
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainScreen()),
-      );
-    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isLogin ? '✅ Sign in successful!' : '✅ Sign up successful!',
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      // StreamBuilder trong main.dart tự chuyển sang MainScreen khi đã đăng nhập.
+    } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('❌ $result'), backgroundColor: Colors.red),
       );
+    }
+
+    if (mounted) {
+      setState(() => isLoading = false);
     }
   }
 
@@ -332,6 +423,10 @@ class _AuthScreenState extends State<AuthScreen> {
                     hintText: 'Email address',
                     accentBlue: accentBlue,
                   ),
+                  if (isLogin && _savedAccounts.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    _buildSavedAccountsRow(context, primaryColor),
+                  ],
                   const SizedBox(height: 30),
 
                   _buildCustomTextField(
@@ -341,7 +436,45 @@ class _AuthScreenState extends State<AuthScreen> {
                     isPassword: true,
                     accentBlue: accentBlue,
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
+
+                  if (isLogin)
+                    GestureDetector(
+                      onTap: () =>
+                          setState(() => _rememberAccount = !_rememberAccount),
+                      behavior: HitTestBehavior.opaque,
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: Checkbox(
+                              value: _rememberAccount,
+                              onChanged: (value) => setState(
+                                () => _rememberAccount = value ?? false,
+                              ),
+                              activeColor: primaryColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              AppStrings.of(context).rememberAccountOnLogin,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  if (isLogin) const SizedBox(height: 12),
 
                   if (isLogin)
                     Center(
@@ -399,13 +532,20 @@ class _AuthScreenState extends State<AuthScreen> {
 
                   Center(
                     child: GestureDetector(
-                      onTap: () {
+                      onTap: () async {
+                        final switchingToLogin = !isLogin;
                         setState(() {
-                          isLogin = !isLogin;
-                          _emailController.clear();
+                          isLogin = switchingToLogin;
                           _passwordController.clear();
                           _usernameController.clear();
+                          if (!switchingToLogin) {
+                            _emailController.clear();
+                            _rememberAccount = false;
+                          }
                         });
+                        if (switchingToLogin) {
+                          await _reloadSavedAccounts(fillMostRecent: true);
+                        }
                       },
                       child: RichText(
                         text: TextSpan(
@@ -433,6 +573,64 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSavedAccountsRow(BuildContext context, Color primaryColor) {
+    final s = AppStrings.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          s.savedAccountsCount(_savedAccounts.length),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 42,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _savedAccounts.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final account = _savedAccounts[index];
+              final isSelected = _emailController.text.trim().toLowerCase() ==
+                  account.email.trim().toLowerCase();
+
+              return InputChip(
+                avatar: CircleAvatar(
+                  backgroundColor:
+                      isSelected ? primaryColor : Colors.grey.shade300,
+                  child: Text(
+                    account.initials,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ),
+                label: Text(
+                  account.shortLabel,
+                  style: const TextStyle(fontSize: 13),
+                ),
+                selected: isSelected,
+                selectedColor: primaryColor.withValues(alpha: 0.15),
+                showCheckmark: false,
+                onPressed: () => _applySavedAccount(account),
+                onDeleted: () => _removeSavedAccount(account),
+                deleteIconColor: Colors.grey.shade600,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 

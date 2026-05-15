@@ -15,7 +15,6 @@ class NotificationService {
   static const String _channelId = 'vocabulary_reminder_v2';
   static const String _channelName = 'Vocabulary Reminders';
   static const int _reminderNotificationId = 100;
-  static const int _testNotificationId = 999;
 
   static const String _prefLastReminderMillis = 'last_reminder_scheduled_millis';
   static const String _prefDueReminderMillis = 'due_reminder_fire_at_millis';
@@ -330,35 +329,6 @@ class NotificationService {
       }
     }
     return false;
-  }
-
-  Future<bool> showTestNotificationNow() async {
-    await init();
-    if (!await requestNotificationPermission()) return false;
-    try {
-      await _notificationsPlugin.show(
-        id: _testNotificationId,
-        title: 'Time to Study!',
-        body: 'Test — bạn có thể vuốt xóa thông báo này.',
-        notificationDetails: _notificationDetails,
-      );
-      return true;
-    } catch (e) {
-      debugPrint('[NotificationService] show test failed: $e');
-      return false;
-    }
-  }
-
-  Future<bool> scheduleTestNotification({int seconds = 10}) async {
-    await init();
-    if (!await requestNotificationPermission()) return false;
-    final when = tz.TZDateTime.now(tz.local).add(Duration(seconds: seconds));
-    return _scheduleReminder(
-      when,
-      title: 'Time to Study!',
-      body: 'Test hẹn giờ — vuốt xóa được sau khi hiện.',
-      notificationId: _testNotificationId,
-    );
   }
 
   Future<void> cancelAllReminders() async {

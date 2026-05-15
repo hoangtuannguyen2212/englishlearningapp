@@ -57,7 +57,7 @@ class MyApp extends StatelessWidget {
                 if (snapshot.hasData) {
                   return const MainScreen();
                 }
-                return const AuthScreen();
+                return const AuthScreen(key: ValueKey('auth_screen'));
               },
             ),
           );
