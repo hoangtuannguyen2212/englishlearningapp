@@ -31,14 +31,23 @@ class SRSService {
     if (ef > 3.5) ef = 3.5;
 
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final reviewDay = DateTime(now.year, now.month, now.day)
+        .add(Duration(days: i));
+    // 9:00 sáng — dễ nhận thông báo hơn 00:00, alarm Android ổn định hơn.
+    final nextReview = DateTime(
+      reviewDay.year,
+      reviewDay.month,
+      reviewDay.day,
+      9,
+      0,
+    );
 
     return WordProgress(
       wordId: current.wordId,
       repetition: n,
       easeFactor: ef,
       interval: i,
-      nextReview: today.add(Duration(days: i)),
+      nextReview: nextReview,
       lastReview: now,
     );
   }
@@ -79,14 +88,17 @@ class SRSService {
     } else {
       // Nếu là "None" hoặc trạng thái khác, xóa bản ghi tiến trình (Reset hoàn toàn)
       await docRef.delete();
+      await NotificationService().scheduleNextReviewReminder(force: true);
       return;
     }
 
     final nextProgress = calculateNextReview(progress, quality);
     await docRef.set(nextProgress.toFirestore());
 
-    // Schedule next notification immediately
-    await NotificationService().scheduleNextReviewReminder();
+    await NotificationService().scheduleReminderAt(
+      nextProgress.nextReview,
+      force: true,
+    );
   }
 
   Stream<WordProgress?> getWordProgressStream(String wordId) {
@@ -120,7 +132,8 @@ class SRSService {
         .map((snapshot) => snapshot.docs.length);
   }
 
-  Future<DateTime?> getNextReviewTime() async {
+  /// Thời điểm ôn sớm nhất trong [user_progress].
+  Future<DateTime?> getNextReviewTime({bool fromServer = false}) async {
     final user = _auth.currentUser;
     if (user == null) return null;
 
@@ -128,15 +141,17 @@ class SRSService {
         .collection('users')
         .doc(user.uid)
         .collection('user_progress')
-        .where('nextReview', isGreaterThan: DateTime.now())
         .orderBy('nextReview')
         .limit(1)
-        .get();
+        .get(
+          fromServer
+              ? const GetOptions(source: Source.server)
+              : null,
+        );
 
-    if (snapshot.docs.isNotEmpty) {
-      return (snapshot.docs.first.data()['nextReview'] as Timestamp).toDate();
-    }
-    return null;
+    if (snapshot.docs.isEmpty) return null;
+
+    return (snapshot.docs.first.data()['nextReview'] as Timestamp).toDate();
   }
 
   String getStatusFromProgress(WordProgress? progress) {

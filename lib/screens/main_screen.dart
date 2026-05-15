@@ -4,6 +4,7 @@ import 'courses/courses_screen.dart';
 import 'profile/profile_screen.dart';
 import 'chatbot/ai_chatbot_screen.dart';
 import '../core/localization/app_localizations.dart';
+import '../data/services/notification_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -12,22 +13,51 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
-  // Biến lưu trữ vị trí tab đang được chọn (Mặc định là 0 - Home)
+class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
+  late final PageController _pageController;
 
-  final List<Widget> _pages = [
-    const HomeScreen(),
-    const CoursesScreen(),
-    const AIChatbotScreen(),
-    const ProfileScreen(),
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
+    WidgetsBinding.instance.addObserver(this);
+    NotificationService().startFirestoreSync();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      NotificationService().syncFromFirestore();
+    }
+  }
+
+  static const List<Widget> _pages = [
+    _KeepAliveTab(child: HomeScreen()),
+    _KeepAliveTab(child: CoursesScreen()),
+    _KeepAliveTab(child: AIChatbotScreen()),
+    _KeepAliveTab(child: ProfileScreen()),
   ];
 
-  // Hàm xử lý khi người dùng bấm vào các tab ở dưới
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    if (_selectedIndex == index) return;
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _onPageChanged(int index) {
+    if (_selectedIndex == index) return;
+    setState(() => _selectedIndex = index);
   }
 
   @override
@@ -37,7 +67,12 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FF),
 
-      body: IndexedStack(index: _selectedIndex, children: _pages),
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: _onPageChanged,
+        physics: const PageScrollPhysics(),
+        children: _pages,
+      ),
 
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -93,5 +128,27 @@ class _MainScreenState extends State<MainScreen> {
         ),
       ),
     );
+  }
+}
+
+/// Giữ state từng tab khi vuốt sang tab khác (tương tự IndexedStack).
+class _KeepAliveTab extends StatefulWidget {
+  const _KeepAliveTab({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeepAliveTab> createState() => _KeepAliveTabState();
+}
+
+class _KeepAliveTabState extends State<_KeepAliveTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }

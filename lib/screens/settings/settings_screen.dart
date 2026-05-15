@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:englishlearningapp/providers/locale_provider.dart';
 import 'package:englishlearningapp/core/localization/app_localizations.dart';
 import 'package:englishlearningapp/data/services/notification_service.dart';
@@ -13,8 +14,22 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _isNotificationOn = true;
+  bool? _isNotificationOn;
   bool _isDarkModeOn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _isNotificationOn = prefs.getBool('notifications_on') ?? false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,21 +66,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _buildSettingTile(
                         icon: Icons.notifications_none_outlined,
                         title: s.notification,
-                        trailing: CupertinoSwitch(
-                          value: _isNotificationOn,
-                          activeTrackColor: const Color(0xFF2962FF),
-                          onChanged: (bool value) async {
-                            setState(() {
-                              _isNotificationOn = value;
-                            });
-                            if (value) {
-                              await NotificationService().scheduleNextReviewReminder();
-                            } else {
-                              await NotificationService().cancelAll();
-                            }
-                          },
-                        ),
+                        trailing: _isNotificationOn == null
+                            ? const SizedBox(
+                                width: 51,
+                                height: 31,
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                ),
+                              )
+                            : CupertinoSwitch(
+                                value: _isNotificationOn!,
+                                activeTrackColor: const Color(0xFF2962FF),
+                                onChanged: _onNotificationChanged,
+                              ),
                       ),
+                      if (_isNotificationOn == true) ...[
+                        const SizedBox(height: 16),
+                        _buildSettingTile(
+                          icon: Icons.notifications_active_outlined,
+                          title: s.testNotificationNow,
+                          trailing: const Icon(Icons.chevron_right, color: Colors.black38),
+                          onTap: () => _runNotificationTest(immediate: true),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildSettingTile(
+                          icon: Icons.timer_outlined,
+                          title: s.testNotification10s,
+                          trailing: const Icon(Icons.chevron_right, color: Colors.black38),
+                          onTap: () => _runNotificationTest(immediate: false),
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       _buildSettingTile(
                         icon: Icons.dark_mode_outlined,
@@ -89,6 +123,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _runNotificationTest({required bool immediate}) async {
+    final s = AppStrings.of(context, listen: false);
+    final ok = immediate
+        ? await NotificationService().showTestNotificationNow()
+        : await NotificationService().scheduleTestNotification(seconds: 10);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? (immediate ? s.testNotificationSent : s.testNotificationScheduled)
+              : s.testNotificationFailed,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _onNotificationChanged(bool value) async {
+    final s = AppStrings.of(context, listen: false);
+    setState(() => _isNotificationOn = value);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications_on', value);
+
+    if (!mounted) return;
+
+    try {
+      if (value) {
+        final permitted =
+            await NotificationService().requestNotificationPermission();
+        if (!permitted) {
+          if (!mounted) return;
+          setState(() => _isNotificationOn = false);
+          await prefs.setBool('notifications_on', false);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(s.notificationUpdateFailed)),
+          );
+          return;
+        }
+
+        await NotificationService().startFirestoreSync();
+        final at = NotificationService().lastScheduledFireAt;
+        if (at == null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(s.notificationEnabledNoSchedule)),
+          );
+        }
+      } else {
+        await NotificationService().stopFirestoreSync();
+        await NotificationService().cancelAllReminders();
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isNotificationOn = !value);
+      await prefs.setBool('notifications_on', !value);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.notificationUpdateFailed)),
+      );
+    }
   }
 
   // --- CÁC WIDGET THÀNH PHẦN ---

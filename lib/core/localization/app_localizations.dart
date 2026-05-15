@@ -184,6 +184,23 @@ class AppStrings {
   // --- Settings Screen ---
   String get language => _isEn ? 'Language' : 'Ngôn ngữ';
   String get notification => _isEn ? 'Notification' : 'Thông báo';
+  String get notificationEnabledNoSchedule => _isEn
+      ? 'Notifications on. Mark a word on a flashcard to schedule a reminder.'
+      : 'Đã bật thông báo. Hãy đánh dấu từ trên flashcard để hẹn nhắc ôn.';
+  String get notificationUpdateFailed => _isEn
+      ? 'Could not update notifications. Check app permissions in system settings.'
+      : 'Không thể cập nhật thông báo. Hãy kiểm tra quyền trong cài đặt máy.';
+  String get testNotificationNow => _isEn ? 'Test notification now' : 'Thử thông báo ngay';
+  String get testNotification10s => _isEn ? 'Test in 10 seconds' : 'Thử sau 10 giây';
+  String get testNotificationSent => _isEn
+      ? 'Test notification sent. Pull down the notification shade.'
+      : 'Đã gửi thông báo thử. Kéo thanh thông báo xuống để xem.';
+  String get testNotificationScheduled => _isEn
+      ? 'Test scheduled in 10 seconds. Minimize the app and wait.'
+      : 'Đã hẹn thử sau 10 giây. Thu nhỏ app và đợi.';
+  String get testNotificationFailed => _isEn
+      ? 'Could not send test notification.'
+      : 'Không gửi được thông báo thử.';
   String get darkMode => _isEn ? 'Dark Mode' : 'Chế độ tối';
   String get selectLanguage => _isEn ? 'Select Language' : 'Chọn ngôn ngữ';
   String get english => _isEn ? 'English' : 'English';
