@@ -7,6 +7,7 @@ import 'package:englishlearningapp/data/services/firebase_options.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/main_screen.dart';
 import 'providers/locale_provider.dart';
+import 'data/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,6 +15,8 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  await NotificationService().init();
 
   await dotenv.load(fileName: ".env");
 

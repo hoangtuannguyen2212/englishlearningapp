@@ -66,27 +66,38 @@ class GamificationService {
     final Timestamp? lastStudyTimestamp = data['lastStudyDate'];
     int currentStreak = data['streak'] ?? 0;
 
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+
     if (lastStudyTimestamp == null) {
-      await userRef.update({'streak': 1});
+      await userRef.update({
+        'streak': 1,
+        'lastStudyDate': FieldValue.serverTimestamp(),
+      });
       return;
     }
 
     final DateTime lastStudyDate = lastStudyTimestamp.toDate();
-    final DateTime now = DateTime.now();
-    
-    final lastDate = DateTime(lastStudyDate.year, lastStudyDate.month, lastStudyDate.day);
-    final today = DateTime(now.year, now.month, now.day);
+    final DateTime lastDate = DateTime(lastStudyDate.year, lastStudyDate.month, lastStudyDate.day);
     
     final difference = today.difference(lastDate).inDays;
 
     if (difference == 1) {
       // Sang ngày mới, tăng streak
-      await userRef.update({'streak': currentStreak + 1});
+      await userRef.update({
+        'streak': currentStreak + 1,
+        'lastStudyDate': FieldValue.serverTimestamp(),
+      });
     } else if (difference > 1) {
       // Bị đứt chuỗi
+      await userRef.update({
+        'streak': 1,
+        'lastStudyDate': FieldValue.serverTimestamp(),
+      });
+    } else if (difference == 0 && currentStreak == 0) {
+      // Trường hợp streak đang là 0 nhưng đã học trong ngày
       await userRef.update({'streak': 1});
     }
-    // Nếu difference == 0 (cùng ngày), không làm gì cả
   }
 
   // Kiểm tra và trao Huy hiệu

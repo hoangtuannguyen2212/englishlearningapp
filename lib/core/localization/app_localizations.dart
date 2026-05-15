@@ -7,6 +7,8 @@ class AppStrings {
 
   AppStrings._(this._isEn);
 
+  bool get isEnglish => _isEn;
+
   static AppStrings of(BuildContext context, {bool listen = true}) {
     final provider = Provider.of<LocaleProvider>(context, listen: listen);
     return AppStrings._(provider.isEnglish);
@@ -143,6 +145,8 @@ class AppStrings {
   }
 
   // --- Profile Screen ---
+  String get library => _isEn ? 'Library' : 'Thư viện';
+  String get myVocabulary => _isEn ? 'My Vocabulary' : 'Từ vựng của tôi';
   String get editProfile => _isEn ? 'Edit Profile' : 'Chỉnh sửa hồ sơ';
   String get settings => _isEn ? 'Settings' : 'Cài đặt';
   String get termsOfService => _isEn ? 'Terms of Service' : 'Điều khoản dịch vụ';

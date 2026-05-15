@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:englishlearningapp/providers/locale_provider.dart';
 import 'package:englishlearningapp/core/localization/app_localizations.dart';
+import 'package:englishlearningapp/data/services/notification_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -12,7 +13,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-
   bool _isNotificationOn = true;
   bool _isDarkModeOn = false;
 
@@ -26,12 +26,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: Stack(
         children: [
           _buildBackground(),
-
           SafeArea(
             child: Column(
               children: [
                 _buildAppBar(context, s),
-
                 Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
@@ -49,25 +47,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         onTap: () => localeProvider.toggleLocale(),
                       ),
-
                       const SizedBox(height: 16),
-
                       _buildSettingTile(
                         icon: Icons.notifications_none_outlined,
                         title: s.notification,
                         trailing: CupertinoSwitch(
                           value: _isNotificationOn,
                           activeTrackColor: const Color(0xFF2962FF),
-                          onChanged: (bool value) {
+                          onChanged: (bool value) async {
                             setState(() {
                               _isNotificationOn = value;
                             });
+                            if (value) {
+                              await NotificationService().scheduleNextReviewReminder();
+                            } else {
+                              await NotificationService().cancelAll();
+                            }
                           },
                         ),
                       ),
-
                       const SizedBox(height: 16),
-
                       _buildSettingTile(
                         icon: Icons.dark_mode_outlined,
                         title: s.darkMode,
@@ -120,11 +119,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Hàm tạo từng thanh Setting linh hoạt
   Widget _buildSettingTile({
     required IconData icon,
     required String title,
-    required Widget trailing, // Widget nằm ở góc phải (có thể là Text hoặc Switch)
+    required Widget trailing,
     VoidCallback? onTap,
   }) {
     return Container(
@@ -160,7 +158,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ),
-                // Hiển thị phần đuôi (Text "EN" hoặc Nút gạt Switch)
                 trailing,
               ],
             ),

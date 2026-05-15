@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../courses/flashcard_screen.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../data/services/srs_service.dart';
+import '../../data/services/gamification_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,11 +20,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Map<String, dynamic>> _vocabularyDatabase = [];
   bool _isLoading = true;
+  final SRSService _srsService = SRSService();
+  final GamificationService _gamificationService = GamificationService();
 
   @override
   void initState() {
     super.initState();
     _fetchVocabularyFromFirebase();
+    _gamificationService.updateStreak();
 
     _searchFocusNode.addListener(() {
       setState(() {});
@@ -273,14 +278,24 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
         const SizedBox(height: 16),
-        _buildDashboardCard(
-          title: strings.dailyChallenge,
-          content: strings.letsReview,
-          icon: Icons.star_outline,
-          color: Colors.purpleAccent,
-          onTap: () {
-            // Placeholder for challenge
-          },
+        StreamBuilder<int>(
+          stream: _srsService.getDueCountStream(),
+          builder: (context, snapshot) {
+            final dueCount = snapshot.data ?? 0;
+            return _buildDashboardCard(
+              title: strings.dailyChallenge,
+              content: dueCount > 0 
+                  ? (AppStrings.of(context, listen: false).isEnglish 
+                      ? "$dueCount words to review" 
+                      : "Cần ôn tập $dueCount từ")
+                  : strings.letsReview,
+              icon: Icons.star_outline,
+              color: Colors.purpleAccent,
+              onTap: () {
+                // Placeholder for challenge
+              },
+            );
+          }
         ),
         const SizedBox(height: 16),
         _buildDashboardCard(

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../data/services/gamification_service.dart';
 import 'edit_profile_screen.dart';
+import 'library_screen.dart';
 import '../../core/localization/app_localizations.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -85,6 +86,18 @@ class ProfileScreen extends StatelessWidget {
                                 const SizedBox(height: 40),
 
                                 // Danh sách các nút Menu
+                                _buildMenuTile(
+                                  icon: Icons.library_books_outlined,
+                                  title: AppStrings.of(context).library,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const LibraryScreen()),
+                                    );
+                                  },
+                                ),
                                 _buildMenuTile(
                                   icon: Icons.person_outline,
                                   title: AppStrings.of(context).editProfile,
