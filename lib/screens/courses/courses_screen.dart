@@ -157,47 +157,47 @@ class _CoursesScreenState extends State<CoursesScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-                child: Text(
-                  AppStrings.of(context).courses,
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF2E384D),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                  child: Text(
+                    AppStrings.of(context).courses,
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF2E384D),
+                    ),
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  AppStrings.of(context).chooseTopicToLearn,
-                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    AppStrings.of(context).chooseTopicToLearn,
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF1A56F6),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: _isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF1A56F6),
+                          ),
+                        )
+                      : GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                childAspectRatio: 0.82,
+                                crossAxisSpacing: 14,
+                                mainAxisSpacing: 14,
+                              ),
+                          itemCount: _topics.length,
+                          itemBuilder: (context, index) {
+                            return _buildTopicCard(_topics[index]);
+                          },
                         ),
-                      )
-                    : GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              childAspectRatio: 0.82,
-                              crossAxisSpacing: 14,
-                              mainAxisSpacing: 14,
-                            ),
-                        itemCount: _topics.length,
-                        itemBuilder: (context, index) {
-                          return _buildTopicCard(_topics[index]);
-                        },
-                      ),
-              ),
+                ),
               ],
             ),
           ),
