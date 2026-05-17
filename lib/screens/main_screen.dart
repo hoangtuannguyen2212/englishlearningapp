@@ -6,6 +6,7 @@ import 'chatbot/ai_chatbot_screen.dart';
 import '../core/localization/app_localizations.dart';
 import '../data/services/gamification_service.dart';
 import '../data/services/notification_service.dart';
+import '../widgets/badge_unlock_dialog.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -25,13 +26,23 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     _pageController = PageController(initialPage: _selectedIndex);
     WidgetsBinding.instance.addObserver(this);
     NotificationService().startFirestoreSync();
-    _gamificationService.migrateLegacyCurrencyFields();
-    _syncStreakAndBadges();
+    _syncGamificationOnLaunch();
   }
 
-  Future<void> _syncStreakAndBadges() async {
-    await _gamificationService.updateStreak();
-    await _gamificationService.checkBadges();
+  Future<void> _syncGamificationOnLaunch() async {
+    await _gamificationService.migrateLegacyCurrencyFields();
+    final newIds = await _gamificationService.checkBadges();
+    if (!mounted || newIds.isEmpty) return;
+    _showBadgeUnlocks(newIds);
+  }
+
+  void _showBadgeUnlocks(List<String> badgeIds) {
+    final badges = _gamificationService.definitionsForIds(badgeIds);
+    if (badges.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showBadgeUnlockDialog(context, badges: badges);
+    });
   }
 
   @override
@@ -45,8 +56,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       NotificationService().syncFromFirestore();
-      _gamificationService.migrateLegacyCurrencyFields();
-      _syncStreakAndBadges();
+      _syncGamificationOnLaunch();
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../data/models/badge_definition.dart';
 import '../../providers/locale_provider.dart';
 
 class AppStrings {
@@ -230,6 +231,24 @@ class AppStrings {
       ? 'Tap to add or remove badges on your profile'
       : 'Chạm để thêm hoặc bỏ huy hiệu trên hồ sơ';
   String get displayOnProfile => _isEn ? 'On profile' : 'Trên hồ sơ';
+  String badgeCategoryTitle(BadgeCategory category) {
+    switch (category) {
+      case BadgeCategory.starter:
+        return _isEn ? 'Getting started' : 'Bắt đầu';
+      case BadgeCategory.study:
+        return _isEn ? 'Study activities' : 'Hoạt động học';
+      case BadgeCategory.xp:
+        return _isEn ? 'Experience' : 'Kinh nghiệm';
+      case BadgeCategory.level:
+        return _isEn ? 'Levels' : 'Cấp độ';
+      case BadgeCategory.streak:
+        return _isEn ? 'Streaks' : 'Chuỗi ngày';
+      case BadgeCategory.diamond:
+        return _isEn ? 'Diamonds' : 'Kim cương';
+      case BadgeCategory.meta:
+        return _isEn ? 'Collector' : 'Sưu tầm';
+    }
+  }
   String get quizCompleted => _isEn ? 'Quiz completed!' : 'Hoàn thành quiz!';
   String get continueLabel => _isEn ? 'Continue' : 'Tiếp tục';
 

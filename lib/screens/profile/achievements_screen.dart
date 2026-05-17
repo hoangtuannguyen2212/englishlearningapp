@@ -6,25 +6,13 @@ import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../data/models/badge_definition.dart';
 import '../../data/services/badge_catalog.dart';
+import '../../data/services/badge_progress.dart';
 import '../../data/services/gamification_service.dart';
 import '../../providers/locale_provider.dart';
 import '../../widgets/profile_display_badges_row.dart';
 
-class AchievementsScreen extends StatefulWidget {
+class AchievementsScreen extends StatelessWidget {
   const AchievementsScreen({super.key});
-
-  @override
-  State<AchievementsScreen> createState() => _AchievementsScreenState();
-}
-
-class _AchievementsScreenState extends State<AchievementsScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      GamificationService().checkBadges();
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,43 +105,13 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                         ),
                       ),
                     ),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                      sliver: SliverGrid(
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          childAspectRatio: 0.84,
-                        ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final badge = BadgeCatalog.all[index];
-                            final isUnlocked = earned.contains(badge.id);
-                            final isFeatured = displayBadgeIds.contains(
-                                  badge.id,
-                                ) &&
-                                isUnlocked;
-                            return _BadgeCard(
-                              badge: badge,
-                              isUnlocked: isUnlocked,
-                              isFeatured: isFeatured,
-                              isEnglish: isEn,
-                              lockedLabel: s.badgeLocked,
-                              unlockedLabel: s.badgeUnlockedStatus,
-                              featuredLabel: s.displayOnProfile,
-                              onTap: isUnlocked
-                                  ? () => _toggleDisplayBadge(
-                                        context,
-                                        badge.id,
-                                      )
-                                  : null,
-                            );
-                          },
-                          childCount: BadgeCatalog.all.length,
-                        ),
-                      ),
+                    ..._badgeCategorySlivers(
+                      context: context,
+                      s: s,
+                      userData: data,
+                      earned: earned,
+                      displayBadgeIds: displayBadgeIds,
+                      isEnglish: isEn,
                     ),
                   ],
                 );
@@ -167,6 +125,77 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     String badgeId,
   ) async {
     await GamificationService().toggleProfileDisplayBadge(badgeId);
+  }
+
+  static List<Widget> _badgeCategorySlivers({
+    required BuildContext context,
+    required AppStrings s,
+    required Map<String, dynamic> userData,
+    required List<String> earned,
+    required List<String> displayBadgeIds,
+    required bool isEnglish,
+  }) {
+    final slivers = <Widget>[];
+
+    for (final category in BadgeCatalog.displayCategories) {
+      final badges = BadgeCatalog.byCategory(category);
+      if (badges.isEmpty) continue;
+
+      slivers.add(
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Text(
+              s.badgeCategoryTitle(category),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF2E384D),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      slivers.add(
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.78,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final badge = badges[index];
+                final isUnlocked = earned.contains(badge.id);
+                final isFeatured =
+                    displayBadgeIds.contains(badge.id) && isUnlocked;
+                return _BadgeCard(
+                  badge: badge,
+                  userData: userData,
+                  isUnlocked: isUnlocked,
+                  isFeatured: isFeatured,
+                  isEnglish: isEnglish,
+                  lockedLabel: s.badgeLocked,
+                  unlockedLabel: s.badgeUnlockedStatus,
+                  featuredLabel: s.displayOnProfile,
+                  onTap: isUnlocked
+                      ? () => _toggleDisplayBadge(context, badge.id)
+                      : null,
+                );
+              },
+              childCount: badges.length,
+            ),
+          ),
+        ),
+      );
+    }
+
+    slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 24)));
+    return slivers;
   }
 }
 
@@ -559,6 +588,7 @@ class _BadgePickerTile extends StatelessWidget {
 class _BadgeCard extends StatelessWidget {
   const _BadgeCard({
     required this.badge,
+    required this.userData,
     required this.isUnlocked,
     required this.isFeatured,
     required this.isEnglish,
@@ -569,6 +599,7 @@ class _BadgeCard extends StatelessWidget {
   });
 
   final BadgeDefinition badge;
+  final Map<String, dynamic> userData;
   final bool isUnlocked;
   final bool isFeatured;
   final bool isEnglish;
@@ -580,6 +611,7 @@ class _BadgeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final definition = badge;
+    final progress = BadgeProgressHelper.forBadge(badge, userData);
 
     return Material(
       color: Colors.transparent,
@@ -724,6 +756,32 @@ class _BadgeCard extends StatelessWidget {
                       : Colors.black.withValues(alpha: 0.45),
                 ),
               ),
+              if (!isUnlocked && progress != null) ...[
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress.fraction,
+                    minHeight: 5,
+                    backgroundColor: Colors.black.withValues(alpha: 0.08),
+                    valueColor: const AlwaysStoppedAnimation(
+                      Color(0xFF1A56F6),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  progress.label(isEnglish),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black.withValues(alpha: 0.5),
+                  ),
+                ),
+              ],
               if (!isUnlocked) ...[
                 const SizedBox(height: 4),
                 Text(

@@ -11,6 +11,9 @@ class GamificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  static DateTime? _lastBadgeCheckAt;
+  static const Duration _badgeCheckCooldown = Duration(seconds: 60);
+
   /// Khóa ngày theo giờ máy (yyyy-MM-dd) — tránh lệch UTC của server timestamp.
   static String dayKey(DateTime dateTime) {
     final local = dateTime.toLocal();
@@ -82,10 +85,14 @@ class GamificationService {
       int newDiamond = currentDiamond + amount;
       int newLevel = calculateLevel(newXp);
 
+      final int quizzesCompleted =
+          (data['quizzesCompleted'] as num?)?.toInt() ?? 0;
+
       final Map<String, dynamic> updates = {
         'totalXp': newXp,
         'diamond': newDiamond,
         'level': newLevel,
+        'quizzesCompleted': quizzesCompleted + 1,
         'lastStudyDate': FieldValue.serverTimestamp(),
       };
       if (data.containsKey('coin')) {
@@ -100,11 +107,41 @@ class GamificationService {
     await updateStreak();
   }
 
-  /// Cập nhật chuỗi ngày học liên tiếp (theo **ngày lịch**, không phải số lần đăng nhập).
-  ///
-  /// - Hôm nay lần đầu mở app sau hôm qua → streak + 1
-  /// - Bỏ ≥ 2 ngày → reset streak = 1
-  /// - Cùng ngày mở lại → giữ nguyên streak
+  /// Ghi nhận ôn SRS (Easy/Hard) — tăng streak và thống kê.
+  Future<void> recordSrsReview() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final userRef = _firestore.collection('users').doc(user.uid);
+    await userRef.update({
+      'srsReviewsCompleted': FieldValue.increment(1),
+    });
+    await updateStreak();
+  }
+
+  /// Ghi nhận hoàn thành bài học (một lần mỗi lesson id).
+  Future<void> recordLessonCompleted(String lessonId) async {
+    if (lessonId.isEmpty) return;
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final userRef = _firestore.collection('users').doc(user.uid);
+    final snapshot = await userRef.get();
+    if (!snapshot.exists) return;
+
+    final completed =
+        List<String>.from(snapshot.data()?['completedLessonIds'] ?? []);
+    if (completed.contains(lessonId)) {
+      await updateStreak();
+      return;
+    }
+
+    completed.add(lessonId);
+    await userRef.update({'completedLessonIds': completed});
+    await updateStreak();
+  }
+
+  /// Cập nhật chuỗi ngày học — chỉ gọi sau hoạt động học (quiz / SRS / bài học).
   Future<void> updateStreak() async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -159,7 +196,13 @@ class GamificationService {
   }
 
   /// Kiểm tra điều kiện huy hiệu; trả về id badge **mới mở khóa** lần này.
-  Future<List<String>> checkBadges() async {
+  Future<List<String>> checkBadges({bool force = false}) async {
+    if (!force &&
+        _lastBadgeCheckAt != null &&
+        DateTime.now().difference(_lastBadgeCheckAt!) < _badgeCheckCooldown) {
+      return [];
+    }
+
     final user = _auth.currentUser;
     if (user == null) return [];
 
@@ -184,6 +227,7 @@ class GamificationService {
       await userRef.update({'badges': currentBadges});
     }
 
+    _lastBadgeCheckAt = DateTime.now();
     return newlyUnlocked;
   }
 

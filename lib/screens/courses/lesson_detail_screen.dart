@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../data/services/gamification_service.dart';
 import '../../widgets/flashcard_widget.dart';
 import 'quiz_screen.dart';
 
@@ -68,6 +69,11 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   }
 
   void _showQuizPrompt() {
+    final lessonId = widget.lesson['id'] as String? ??
+        widget.lesson['title']?.toString() ??
+        '';
+    GamificationService().recordLessonCompleted(lessonId);
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(

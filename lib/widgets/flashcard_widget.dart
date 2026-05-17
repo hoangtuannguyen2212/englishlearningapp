@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import '../core/localization/app_localizations.dart';
+import '../data/services/gamification_service.dart';
 import '../data/services/srs_service.dart';
 
 class FlashcardWidget extends StatefulWidget {
@@ -248,7 +249,11 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
                     });
                     
                     // Xử lý ngầm database, không block UI
-                    _srsService.updateStatus(wordId, nextStatus);
+                    _srsService.updateStatus(wordId, nextStatus).then((_) {
+                      if (nextStatus == 'Easy' || nextStatus == 'Hard') {
+                        GamificationService().recordSrsReview();
+                      }
+                    });
                   },
                   child: Center(
                     child: AnimatedDefaultTextStyle(

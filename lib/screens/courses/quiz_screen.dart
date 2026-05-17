@@ -241,7 +241,7 @@ class _QuizScreenState extends State<QuizScreen> {
     final s = AppStrings.of(context, listen: false);
 
     await _gamificationService.addRewards(_score);
-    final newBadgeIds = await _gamificationService.checkBadges();
+    final newBadgeIds = await _gamificationService.checkBadges(force: true);
     final newBadges = _gamificationService.definitionsForIds(newBadgeIds);
 
     if (!mounted) return;
