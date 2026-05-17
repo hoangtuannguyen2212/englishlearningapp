@@ -2,15 +2,21 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../data/models/badge_definition.dart';
+import '../../data/models/user_model.dart';
 import '../../data/services/gamification_service.dart';
+import 'achievements_screen.dart';
 import 'edit_profile_screen.dart';
 import 'library_screen.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../providers/locale_provider.dart';
+import '../../widgets/profile_display_badges_row.dart';
+import 'package:provider/provider.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  //Tá»± Ä‘á»™ng láº¥y chá»¯ cÃ¡i Ä‘áº§u cá»§a TÃªn hoáº·c Email lÃ m Avatar
+
   String _getInitials(String? displayName, String? email) {
     if (displayName != null && displayName.trim().isNotEmpty) {
       List<String> names = displayName.trim().split(" ");
@@ -41,7 +47,9 @@ class ProfileScreen extends StatelessWidget {
             final int totalXp = userData?['totalXp'] ?? 0;
             final int level = userData?['level'] ?? 1;
             final int streak = userData?['streak'] ?? 0;
-            final int coins = userData?['coins'] ?? 0;
+            final int diamond = UserModel.diamondFromMap(
+              userData ?? const {},
+            );
 
             final gamification = GamificationService();
             final int currentThreshold = gamification.getXpThreshold(level);
@@ -60,12 +68,17 @@ class ProfileScreen extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                       child: Column(
                         children: [
-                          _buildProfileHeader(context, user, totalXp),
+                          _buildProfileHeader(
+                            context,
+                            user,
+                            totalXp,
+                            userData,
+                          ),
                           const SizedBox(height: 20),
                           _buildStatsSection(
                             context,
                             streak: streak,
-                            coins: coins,
+                            diamond: diamond,
                             level: level,
                             progressXp: progressXp,
                             neededXp: neededXp,
@@ -79,6 +92,19 @@ class ProfileScreen extends StatelessWidget {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => const LibraryScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                          _buildMenuTile(
+                            icon: Icons.military_tech_outlined,
+                            title: AppStrings.of(context).achievements,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const AchievementsScreen(),
                                 ),
                               );
                             },
@@ -142,7 +168,7 @@ class ProfileScreen extends StatelessWidget {
   Widget _buildStatsSection(
     BuildContext context, {
     required int streak,
-    required int coins,
+    required int diamond,
     required int level,
     required int progressXp,
     required int neededXp,
@@ -176,8 +202,8 @@ class ProfileScreen extends StatelessWidget {
             Expanded(
               child: _buildGradientStatCard(
                 icon: Icons.diamond_rounded,
-                value: '$coins',
-                label: s.coins,
+                value: '$diamond',
+                label: s.diamond,
                 gradient: const [Color(0xFF42A5F5), Color(0xFF1A56F6)],
                 glow: const Color(0xFF1A56F6),
               ),
@@ -377,13 +403,22 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // --- CÃC WIDGET THÃ€NH PHáº¦N ---
 
-  Widget _buildProfileHeader(BuildContext context, User? user, int totalXp) {
-    // Xá»­ lÃ½ dá»¯ liá»‡u fallback náº¿u ngÆ°á»i dÃ¹ng chÆ°a cáº­p nháº­t tÃªn/email
-    final String displayName = user?.displayName ?? AppStrings.of(context).defaultUser;
+
+  Widget _buildProfileHeader(
+    BuildContext context,
+    User? user,
+    int totalXp,
+    Map<String, dynamic>? userData,
+  ) {
+    final String displayName =
+        user?.displayName ?? AppStrings.of(context).defaultUser;
     final String email = user?.email ?? AppStrings.of(context).noEmail;
     final String initials = _getInitials(user?.displayName, user?.email);
+    final isEn = Provider.of<LocaleProvider>(context).isEnglish;
+    final displayBadges = userData != null
+        ? GamificationService.profileDisplayBadges(userData)
+        : <BadgeDefinition>[];
 
     return Row(
       children: [
@@ -432,21 +467,37 @@ class ProfileScreen extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 2),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  "Total: $totalXp XP",
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.blue,
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Total: $totalXp XP',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue,
+                      ),
+                    ),
                   ),
-                ),
+                  if (displayBadges.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: ProfileDisplayBadgesRow(
+                        badges: displayBadges,
+                        isEnglish: isEn,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),

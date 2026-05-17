@@ -6,9 +6,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../courses/flashcard_screen.dart';
 import 'review_words_screen.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../data/models/user_model.dart';
 import '../../data/models/user_progress_model.dart';
 import '../../data/services/srs_service.dart';
-import '../../data/services/gamification_service.dart';
 import '../../widgets/app_screen_background.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -26,7 +26,6 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _vocabularyDatabase = [];
   bool _isLoading = true;
   final SRSService _srsService = SRSService();
-  final GamificationService _gamificationService = GamificationService();
   String? _activeUid;
   StreamSubscription<User?>? _authSub;
 
@@ -35,7 +34,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _activeUid = FirebaseAuth.instance.currentUser?.uid;
     _fetchVocabularyFromFirebase();
-    _gamificationService.updateStreak();
     _searchFocusNode.addListener(() => setState(() {}));
     _authSub = FirebaseAuth.instance.userChanges().listen(_onUserChanged);
   }
@@ -48,10 +46,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchController.clear();
     _searchFocusNode.unfocus();
     _searchQuery = '';
-
-    if (uid != null) {
-      _gamificationService.updateStreak();
-    }
 
     if (mounted) setState(() {});
   }
@@ -177,7 +171,9 @@ class _HomeScreenState extends State<HomeScreen> {
             final String displayName =
                 userData?['username'] ?? user?.displayName ?? 'Learner';
             final int streak = userData?['streak'] ?? 0;
-            final int coins = userData?['coins'] ?? 0;
+            final int diamond = UserModel.diamondFromMap(
+              userData ?? const {},
+            );
 
             final filteredWords = _vocabularyDatabase
                 .where(
@@ -199,7 +195,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   SafeArea(
                     child: Column(
                       children: [
-                        _buildHeader(context, displayName, streak, coins),
+                        _buildHeader(context, displayName, streak, diamond),
                         _buildSearchBar(context),
                         Expanded(
                           child: isSearching
@@ -218,7 +214,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, String name, int streak, int coins) {
+  Widget _buildHeader(
+    BuildContext context,
+    String name,
+    int streak,
+    int diamond,
+  ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
       child: Row(
@@ -258,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 8),
               _buildStatBadge(
                 icon: Icons.diamond_rounded,
-                value: '$coins',
+                value: '$diamond',
                 gradient: const [Color(0xFF42A5F5), Color(0xFF1A56F6)],
                 glow: const Color(0xFF1A56F6),
               ),

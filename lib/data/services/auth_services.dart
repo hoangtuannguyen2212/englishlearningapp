@@ -35,9 +35,11 @@ class AuthService {
       'totalXp': 0,
       'level': 1,
       'streak': 0,
-      'coins': 0,
+      'diamond': 0,
       'badges': [],
+      'displayBadgeIds': <String>[],
       'lastStudyDate': null,
+      'lastStreakDay': null,
       'dailyGoalXp': 100,
       'createdAt': FieldValue.serverTimestamp(),
     });

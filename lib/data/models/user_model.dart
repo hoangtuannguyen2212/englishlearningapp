@@ -1,13 +1,24 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserModel {
+  /// Đọc [diamond]; tương thích field cũ `coin` / `coins`.
+  static int diamondFromMap(Map<String, dynamic> map) {
+    final dynamic diamond = map['diamond'];
+    if (diamond is num) return diamond.toInt();
+    final dynamic legacyCoin = map['coin'];
+    if (legacyCoin is num) return legacyCoin.toInt();
+    final dynamic legacyCoins = map['coins'];
+    if (legacyCoins is num) return legacyCoins.toInt();
+    return 0;
+  }
+
   final String uid;
   final String username;
   final String email;
   final int totalXp;
   final int level;
   final int streak;
-  final int coins; // Mới: Tiền vàng
+  final int diamond;
   final List<String> badges;
   final DateTime? lastStudyDate;
   final int dailyGoalXp;
@@ -20,7 +31,7 @@ class UserModel {
     this.totalXp = 0,
     this.level = 1,
     this.streak = 0,
-    this.coins = 0, // Mặc định 0
+    this.diamond = 0,
     this.badges = const [],
     this.lastStudyDate,
     this.dailyGoalXp = 100,
@@ -35,7 +46,7 @@ class UserModel {
       totalXp: map['totalXp'] ?? 0,
       level: map['level'] ?? 1,
       streak: map['streak'] ?? 0,
-      coins: map['coins'] ?? 0, // Lấy từ map
+      diamond: UserModel.diamondFromMap(map),
       badges: List<String>.from(map['badges'] ?? []),
       lastStudyDate: map['lastStudyDate'] != null 
           ? (map['lastStudyDate'] as Timestamp).toDate() 
@@ -55,7 +66,7 @@ class UserModel {
       'totalXp': totalXp,
       'level': level,
       'streak': streak,
-      'coins': coins, // Đưa vào map
+      'diamond': diamond,
       'badges': badges,
       'lastStudyDate': lastStudyDate != null ? Timestamp.fromDate(lastStudyDate!) : null,
       'dailyGoalXp': dailyGoalXp,

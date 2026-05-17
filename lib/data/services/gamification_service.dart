@@ -1,134 +1,267 @@
 import 'dart:math' as math;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
+import '../models/badge_definition.dart';
+import '../models/user_model.dart';
+import 'badge_catalog.dart';
 
 class GamificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  /// Khóa ngày theo giờ máy (yyyy-MM-dd) — tránh lệch UTC của server timestamp.
+  static String dayKey(DateTime dateTime) {
+    final local = dateTime.toLocal();
+    final y = local.year;
+    final m = local.month.toString().padLeft(2, '0');
+    final d = local.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
   // Tính toán cấp độ dựa trên tổng XP (Cơ chế lũy tiến)
   // Tổng XP cho Level L = 500 * L * (L-1)
   int calculateLevel(int totalXp) {
     if (totalXp < 1000) return 1;
-    // Giải phương trình bậc 2: 500L^2 - 500L - TotalXP = 0
-    // Công thức nghiệm: L = (500 + sqrt(500^2 + 4*500*TotalXP)) / (2*500)
-    // Rút gọn: L = (1 + sqrt(1 + TotalXP/125)) / 2
     double level = (1 + math.sqrt(1 + totalXp / 125)) / 2;
     return level.floor();
   }
 
-  // Lấy ngưỡng XP của một cấp độ (Tổng XP cần để đạt cấp đó)
   int getXpThreshold(int level) {
     if (level <= 1) return 0;
     return 500 * level * (level - 1);
   }
 
-  // Cập nhật XP, Level và Coins
+  static int _diamondFromData(Map<String, dynamic>? data) {
+    if (data == null) return 0;
+    return UserModel.diamondFromMap(data);
+  }
+
+  /// Gộp `coin` / `coins` cũ sang `diamond` (nếu thiếu) và xóa field legacy.
+  Future<void> migrateLegacyCurrencyFields() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final userRef = _firestore.collection('users').doc(user.uid);
+    final snapshot = await userRef.get();
+    if (!snapshot.exists) return;
+
+    final data = snapshot.data()!;
+    final bool hasCoin = data.containsKey('coin');
+    final bool hasCoins = data.containsKey('coins');
+    final bool hasDiamond = data.containsKey('diamond');
+
+    if (!hasCoin && !hasCoins) return;
+
+    final Map<String, dynamic> updates = {};
+    if (!hasDiamond) {
+      updates['diamond'] = _diamondFromData(data);
+    }
+    if (hasCoin) updates['coin'] = FieldValue.delete();
+    if (hasCoins) updates['coins'] = FieldValue.delete();
+
+    await userRef.update(updates);
+  }
+
   Future<void> addRewards(int amount) async {
     final user = _auth.currentUser;
     if (user == null) return;
 
     final userRef = _firestore.collection('users').doc(user.uid);
-    
+
     await _firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(userRef);
       if (!snapshot.exists) return;
 
       int currentXp = snapshot.data()?['totalXp'] ?? 0;
-      int currentCoins = snapshot.data()?['coins'] ?? 0;
-      
+      final data = snapshot.data()!;
+      int currentDiamond = _diamondFromData(data);
+
       int newXp = currentXp + amount;
-      int newCoins = currentCoins + amount; // Thưởng coin tương đương XP
+      int newDiamond = currentDiamond + amount;
       int newLevel = calculateLevel(newXp);
 
-      transaction.update(userRef, {
+      final Map<String, dynamic> updates = {
         'totalXp': newXp,
-        'coins': newCoins,
+        'diamond': newDiamond,
         'level': newLevel,
         'lastStudyDate': FieldValue.serverTimestamp(),
-      });
+      };
+      if (data.containsKey('coin')) {
+        updates['coin'] = FieldValue.delete();
+      }
+      if (data.containsKey('coins')) {
+        updates['coins'] = FieldValue.delete();
+      }
+      transaction.update(userRef, updates);
     });
 
     await updateStreak();
   }
 
-  // Cập nhật Chuỗi ngày học (Streak)
+  /// Cập nhật chuỗi ngày học liên tiếp (theo **ngày lịch**, không phải số lần đăng nhập).
+  ///
+  /// - Hôm nay lần đầu mở app sau hôm qua → streak + 1
+  /// - Bỏ ≥ 2 ngày → reset streak = 1
+  /// - Cùng ngày mở lại → giữ nguyên streak
   Future<void> updateStreak() async {
     final user = _auth.currentUser;
     if (user == null) return;
 
     final userRef = _firestore.collection('users').doc(user.uid);
     final snapshot = await userRef.get();
-    
     if (!snapshot.exists) return;
 
     final data = snapshot.data()!;
-    final Timestamp? lastStudyTimestamp = data['lastStudyDate'];
     int currentStreak = data['streak'] ?? 0;
 
     final DateTime now = DateTime.now();
-    final DateTime today = DateTime(now.year, now.month, now.day);
+    final String todayKey = dayKey(now);
+    final String yesterdayKey = dayKey(now.subtract(const Duration(days: 1)));
 
-    if (lastStudyTimestamp == null) {
+    String? lastStreakDay = data['lastStreakDay'] as String?;
+
+    // Migrate từ lastStudyDate cũ (nếu chưa có lastStreakDay).
+    if (lastStreakDay == null) {
+      final Timestamp? lastStudyTimestamp = data['lastStudyDate'];
+      if (lastStudyTimestamp != null) {
+        lastStreakDay = dayKey(lastStudyTimestamp.toDate());
+      }
+    }
+
+    if (lastStreakDay == todayKey) {
+      // Đã ghi nhận hôm nay — không tăng thêm trong cùng ngày.
+      if (currentStreak == 0) {
+        await userRef.update({
+          'streak': 1,
+          'lastStreakDay': todayKey,
+        });
+      }
+      return;
+    }
+
+    if (lastStreakDay == yesterdayKey) {
       await userRef.update({
-        'streak': 1,
+        'streak': currentStreak + 1,
+        'lastStreakDay': todayKey,
         'lastStudyDate': FieldValue.serverTimestamp(),
       });
       return;
     }
 
-    final DateTime lastStudyDate = lastStudyTimestamp.toDate();
-    final DateTime lastDate = DateTime(lastStudyDate.year, lastStudyDate.month, lastStudyDate.day);
-    
-    final difference = today.difference(lastDate).inDays;
-
-    if (difference == 1) {
-      // Sang ngày mới, tăng streak
-      await userRef.update({
-        'streak': currentStreak + 1,
-        'lastStudyDate': FieldValue.serverTimestamp(),
-      });
-    } else if (difference > 1) {
-      // Bị đứt chuỗi
-      await userRef.update({
-        'streak': 1,
-        'lastStudyDate': FieldValue.serverTimestamp(),
-      });
-    } else if (difference == 0 && currentStreak == 0) {
-      // Trường hợp streak đang là 0 nhưng đã học trong ngày
-      await userRef.update({'streak': 1});
-    }
+    // Lần đầu hoặc đứt chuỗi (≥ 2 ngày).
+    await userRef.update({
+      'streak': 1,
+      'lastStreakDay': todayKey,
+      'lastStudyDate': FieldValue.serverTimestamp(),
+    });
   }
 
-  // Kiểm tra và trao Huy hiệu
-  Future<void> checkBadges() async {
+  /// Kiểm tra điều kiện huy hiệu; trả về id badge **mới mở khóa** lần này.
+  Future<List<String>> checkBadges() async {
     final user = _auth.currentUser;
-    if (user == null) return;
+    if (user == null) return [];
 
     final userRef = _firestore.collection('users').doc(user.uid);
     final snapshot = await userRef.get();
+    if (!snapshot.exists) return [];
+
     final data = snapshot.data()!;
-    
-    List<String> currentBadges = List<String>.from(data['badges'] ?? []);
-    int totalXp = data['totalXp'] ?? 0;
-    int streak = data['streak'] ?? 0;
+    final currentBadges = List<String>.from(data['badges'] ?? []);
+    final newlyUnlocked = <String>[];
 
-    bool updated = false;
-
-    // Huy hiệu "Người mới"
-    if (!currentBadges.contains('newbie') && totalXp > 0) {
-      currentBadges.add('newbie');
-      updated = true;
+    for (final badge in BadgeCatalog.all) {
+      if (currentBadges.contains(badge.id)) continue;
+      final evalData = Map<String, dynamic>.from(data)
+        ..['badges'] = List<String>.from(currentBadges);
+      if (!badge.isEarned(evalData)) continue;
+      currentBadges.add(badge.id);
+      newlyUnlocked.add(badge.id);
     }
 
-    // Huy hiệu "Chiến binh 7 ngày"
-    if (!currentBadges.contains('streak_7') && streak >= 7) {
-      currentBadges.add('streak_7');
-      updated = true;
-    }
-
-    if (updated) {
+    if (newlyUnlocked.isNotEmpty) {
       await userRef.update({'badges': currentBadges});
     }
+
+    return newlyUnlocked;
+  }
+
+  /// Lấy [BadgeDefinition] từ danh sách id đã mở khóa.
+  List<BadgeDefinition> definitionsForIds(List<String> ids) {
+    return ids
+        .map(BadgeCatalog.byId)
+        .whereType<BadgeDefinition>()
+        .toList();
+  }
+
+  /// Id huy hiệu hiển thị trên Profile (đã lọc badge đã mở khóa).
+  static List<String> displayBadgeIdsFrom(Map<String, dynamic> data) {
+    final earned = Set<String>.from(data['badges'] ?? []);
+    final List<String> raw;
+
+    final idsField = data['displayBadgeIds'];
+    if (idsField is List) {
+      raw = idsField.whereType<String>().toList();
+    } else {
+      final legacy = data['displayBadgeId'];
+      raw = legacy is String && legacy.isNotEmpty ? [legacy] : [];
+    }
+
+    final seen = <String>{};
+    final result = <String>[];
+    for (final id in raw) {
+      if (!earned.contains(id) || seen.contains(id)) continue;
+      seen.add(id);
+      result.add(id);
+    }
+    return result;
+  }
+
+  /// Huy hiệu đang chọn hiển thị trên Profile (giữ thứ tự người dùng chọn).
+  static List<BadgeDefinition> profileDisplayBadges(Map<String, dynamic> data) {
+    return displayBadgeIdsFrom(data)
+        .map(BadgeCatalog.byId)
+        .whereType<BadgeDefinition>()
+        .toList();
+  }
+
+  /// Bật/tắt một huy hiệu trên Profile.
+  Future<bool> toggleProfileDisplayBadge(String badgeId) async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+
+    final userRef = _firestore.collection('users').doc(user.uid);
+    final snapshot = await userRef.get();
+    if (!snapshot.exists) return false;
+
+    final data = snapshot.data()!;
+    final earned = List<String>.from(data['badges'] ?? []);
+    if (!earned.contains(badgeId)) return false;
+
+    final ids = List<String>.from(displayBadgeIdsFrom(data));
+    if (ids.contains(badgeId)) {
+      ids.remove(badgeId);
+    } else {
+      ids.add(badgeId);
+    }
+
+    await userRef.update({
+      'displayBadgeIds': ids,
+      'displayBadgeId': FieldValue.delete(),
+    });
+    return true;
+  }
+
+  /// Xóa toàn bộ huy hiệu trên Profile.
+  Future<bool> clearProfileDisplayBadges() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+
+    await _firestore.collection('users').doc(user.uid).update({
+      'displayBadgeIds': <String>[],
+      'displayBadgeId': FieldValue.delete(),
+    });
+    return true;
   }
 }

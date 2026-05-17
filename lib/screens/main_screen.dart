@@ -4,6 +4,7 @@ import 'courses/courses_screen.dart';
 import 'profile/profile_screen.dart';
 import 'chatbot/ai_chatbot_screen.dart';
 import '../core/localization/app_localizations.dart';
+import '../data/services/gamification_service.dart';
 import '../data/services/notification_service.dart';
 
 class MainScreen extends StatefulWidget {
@@ -16,6 +17,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   late final PageController _pageController;
+  final GamificationService _gamificationService = GamificationService();
 
   @override
   void initState() {
@@ -23,6 +25,13 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     _pageController = PageController(initialPage: _selectedIndex);
     WidgetsBinding.instance.addObserver(this);
     NotificationService().startFirestoreSync();
+    _gamificationService.migrateLegacyCurrencyFields();
+    _syncStreakAndBadges();
+  }
+
+  Future<void> _syncStreakAndBadges() async {
+    await _gamificationService.updateStreak();
+    await _gamificationService.checkBadges();
   }
 
   @override
@@ -36,6 +45,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       NotificationService().syncFromFirestore();
+      _gamificationService.migrateLegacyCurrencyFields();
+      _syncStreakAndBadges();
     }
   }
 

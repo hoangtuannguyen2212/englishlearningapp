@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../../data/services/gamification_service.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../widgets/badge_unlock_dialog.dart';
 
 enum QuizType { vocabularyToDefinition, fillInTheBlank, audioRecognition, wordScramble }
 
@@ -237,10 +238,15 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   void _finishQuiz() async {
+    final s = AppStrings.of(context, listen: false);
+
     await _gamificationService.addRewards(_score);
+    final newBadgeIds = await _gamificationService.checkBadges();
+    final newBadges = _gamificationService.definitionsForIds(newBadgeIds);
+
     if (!mounted) return;
-    
-    showDialog(
+
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
@@ -249,21 +255,32 @@ class _QuizScreenState extends State<QuizScreen> {
           children: [
             const Icon(Icons.celebration_rounded, color: Colors.orange, size: 60),
             const SizedBox(height: 16),
-            Text(AppStrings.of(context).wellDone, textAlign: TextAlign.center, 
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+            Text(
+              s.wellDone,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+            ),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("Quiz Completed!", style: TextStyle(fontSize: 16, color: Colors.grey)),
+            Text(
+              s.quizCompleted,
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+            ),
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _buildRewardBadge(Icons.stars, "+$_score", "XP", Colors.blue),
                 const SizedBox(width: 24),
-                _buildRewardBadge(Icons.monetization_on, "+$_score", "Coins", Colors.orange),
+                _buildRewardBadge(
+                  Icons.diamond_rounded,
+                  "+$_score",
+                  s.diamond,
+                  Colors.orange,
+                ),
               ],
             ),
           ],
@@ -271,22 +288,36 @@ class _QuizScreenState extends State<QuizScreen> {
         actions: [
           Center(
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(ctx),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1A56F6),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              child: const Text("Continue", style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(
+                s.continueLabel,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ],
       ),
     );
+
+    if (!mounted) return;
+
+    if (newBadges.isNotEmpty) {
+      await showBadgeUnlockDialog(context, badges: newBadges);
+    }
+
+    if (!mounted) return;
+    Navigator.pop(context);
   }
 
   Widget _buildRewardBadge(IconData icon, String value, String label, Color color) {
